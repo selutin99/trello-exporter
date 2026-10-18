@@ -1,4 +1,4 @@
-import type { ProbeController } from '@trello-exporter/probe-core';
+import type { ProbeController } from '../core';
 import { localizePage, translations } from '../i18n';
 import type { Locale } from '../i18n';
 

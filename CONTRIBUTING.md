@@ -18,7 +18,7 @@ export and restore against a disposable Trello board before claiming support.
 
 Run `npm ci` and `npm run check` before submitting changes. Tests run offline with
 synthetic fixtures. Keep browser code under `src/`, reusable logic in
-`packages/*/src/`, and add TSDoc for exported contracts whose behavior needs
+`src/api/` and `src/core/`, and add TSDoc for exported contracts whose behavior needs
 explanation. Keep translations in `src/i18n/locales/`; Russian must satisfy the
 English message contract. See [architecture](docs/ARCHITECTURE.md) for boundaries.
 

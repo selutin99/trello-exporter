@@ -1,5 +1,5 @@
-import { saveCallbackStage } from '@trello-exporter/probe-core';
-import type { CallbackStage } from '@trello-exporter/probe-core';
+import { saveCallbackStage } from '../core';
+import type { CallbackStage } from '../core';
 import { chooseLocale, translations } from '../i18n';
 import { runtimeSettings } from './runtime';
 import { pageReady } from './sdk';

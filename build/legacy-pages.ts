@@ -1,4 +1,4 @@
-import { copyFile, mkdir, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, rename, rmdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
 
@@ -14,8 +14,10 @@ export function legacyPages(outputDirectory: string): Plugin {
     async closeBundle() {
       await mkdir(resolve(outputDirectory, 'prototype'), { recursive: true });
       for (const page of pageNames) {
+        await rename(resolve(outputDirectory, 'pages', `${page}.html`), resolve(outputDirectory, `${page}.html`));
         await copyFile(resolve(outputDirectory, `${page}.html`), resolve(outputDirectory, 'prototype', `${page}.html`));
       }
+      await rmdir(resolve(outputDirectory, 'pages'));
       await writeFile(resolve(outputDirectory, '.nojekyll'), '');
     },
   };

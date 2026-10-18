@@ -40,7 +40,7 @@ and other browsers require separate compatibility checks before support is claim
 ## Run the compatibility prototype
 
 Use Node.js 24, or a compatible runtime (20.19+ / 22.12+). The application is
-written in strict TypeScript with Vite and two local npm workspace packages.
+written in strict TypeScript with Vite. It is a single npm project.
 
 ```sh
 npm ci
@@ -48,7 +48,7 @@ npm run check
 npm run dev
 ```
 
-Open `http://127.0.0.1:4173/trello-exporter/probe.html`. The standalone screen checks RU/EN
+Open `http://127.0.0.1:4173/trello-exporter/pages/probe.html`. The standalone screen checks RU/EN
 and local file handling. Trello OAuth requires registering the connector as a
 Power-Up and opening it from inside the test board.
 
@@ -56,7 +56,7 @@ See [prototype setup and test boundaries](docs/PROTOTYPE.md). The current UI mak
 only a metadata read for the explicitly configured board. Writes are disabled.
 
 `npm run check` checks types, runs offline tests, and builds `dist/`.
-`npm run preview` serves that build locally. GitHub Actions checks the same code,
+`npm run preview` serves that build at `/trello-exporter/probe.html`. GitHub Actions checks the same code,
 scans Git history for secrets, and publishes only the built files to Pages.
 
 Live checks passed in Chrome and Trello Desktop on macOS: the board button and
@@ -73,7 +73,7 @@ The initial design documents are in Russian:
 - [Snapshot and archive format](docs/SNAPSHOT_FORMAT.md)
 - [Market research and reference documentation](docs/RESEARCH.md)
 - [Contributing](CONTRIBUTING.md)
-- [Source layout and package boundaries](docs/ARCHITECTURE.md)
+- [Source layout and module boundaries](docs/ARCHITECTURE.md)
 - [Credential audit and repository hygiene](docs/SECURITY_AUDIT.md)
 
 These documents describe intended behavior, not capabilities already available.

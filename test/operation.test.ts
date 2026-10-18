@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { waitForOperation } from '@trello-exporter/probe-core';
+import { waitForOperation } from '../src/core';
 
 test('cancel releases a check even when the OAuth SDK never settles', async () => {
   const controller = new AbortController();

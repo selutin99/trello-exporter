@@ -1,5 +1,5 @@
 import { expect, test, vi } from 'vitest';
-import { ProbeController, diagnosticError } from '@trello-exporter/probe-core';
+import { ProbeController, diagnosticError } from '../src/core';
 
 test('a cancelled OAuth completion cannot change a later operation or its report', async () => {
   let complete: () => void = () => {};

@@ -1,5 +1,5 @@
 import { expect, test, vi } from 'vitest';
-import { scanLocalFile } from '@trello-exporter/probe-core';
+import { scanLocalFile } from '../src/core';
 
 test('streams a 200 MiB synthetic file with at most one chunk queued', async () => {
   const size = 200 * 1024 * 1024;

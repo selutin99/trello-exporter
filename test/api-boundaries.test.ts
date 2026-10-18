@@ -1,5 +1,5 @@
 import { expect, test, vi } from 'vitest';
-import { ApiError, TestBoardApi } from '@trello-exporter/trello-client';
+import { ApiError, TestBoardApi } from '../src/api';
 
 const board = { id: 'a'.repeat(24), shortLink: 'TEST0001', name: 'Synthetic', closed: false };
 const ok = (value: unknown) => new Response(JSON.stringify(value));

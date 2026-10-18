@@ -1,4 +1,4 @@
-import { parseBoardReference } from '@trello-exporter/trello-client';
+import { parseBoardReference } from '../api';
 import type { OAuthOptions } from './sdk';
 
 export interface RuntimeSettings {

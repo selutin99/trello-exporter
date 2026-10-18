@@ -1,5 +1,5 @@
-import { TestBoardApi } from '@trello-exporter/trello-client';
-import { CALLBACK_STAGE_KEY, callbackStage, ProbeController, scanLocalFile } from '@trello-exporter/probe-core';
+import { TestBoardApi } from '../api';
+import { CALLBACK_STAGE_KEY, callbackStage, ProbeController, scanLocalFile } from '../core';
 import { chooseLocale } from '../i18n';
 import { runtimeSettings } from '../trello/runtime';
 import type { RuntimeSettings } from '../trello/runtime';

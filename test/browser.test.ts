@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { URL as NodeURL } from 'node:url';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { ProbeController } from '@trello-exporter/probe-core';
+import { ProbeController } from '../src/core';
 import { ProbeView } from '../src/app/view';
 import { downloadJson } from '../src/app/download';
 import { localizePage, translations } from '../src/i18n';

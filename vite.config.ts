@@ -8,13 +8,14 @@ const pagesRoot = resolve(projectRoot, 'src/pages');
 const outputDirectory = resolve(projectRoot, 'dist');
 
 export default defineConfig({
-  root: pagesRoot,
+  root: resolve(projectRoot, 'src'),
+  appType: 'mpa',
   base: '/trello-exporter/',
   publicDir: false,
   plugins: [legacyPages(outputDirectory)],
   server: {
     fs: {
-      allow: ['src', 'packages', 'node_modules'].map(directory => resolve(projectRoot, directory)),
+      allow: ['src', 'node_modules'].map(directory => resolve(projectRoot, directory)),
       deny: ['.env', '.env.*', '**/.git/**', '**/exports/**', '**/backups/**', '**/snapshots/**', '**/import-reports/**', '**/restore-jobs/**', '**/tmp/**'],
     },
   },

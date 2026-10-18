@@ -1,13 +1,13 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { ApiError, TestBoardApi } from '@trello-exporter/trello-client';
+import { ApiError, TestBoardApi } from '../src/api';
 
 const board = { id: 'a'.repeat(24), shortLink: 'TEST0001', name: 'Synthetic', closed: false };
 const list = { id: 'b'.repeat(24), idBoard: board.id, name: 'Synthetic list', closed: false, pos: 1 };
 const token = 'synthetic-test-token';
 const ok = (value: unknown) => new Response(JSON.stringify(value), { status: 200 });
 
-function setup(responses: (Response | Error)[], extra: Partial<import('@trello-exporter/trello-client').ClientOptions> = {}) {
+function setup(responses: (Response | Error)[], extra: Partial<import('../src/api').ClientOptions> = {}) {
   const calls: { url: string; method?: string; headers: Record<string, string>; redirect?: RequestRedirect; body?: BodyInit | null }[] = [];
   const client = new TestBoardApi({
     boardReference: board.shortLink,

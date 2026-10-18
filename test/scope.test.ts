@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { parseBoardReference, ScopeError, TestBoardScope } from '@trello-exporter/trello-client';
+import { parseBoardReference, ScopeError, TestBoardScope } from '../src/api';
 
 const board = { id: 'a'.repeat(24), shortLink: 'TEST0001' };
 const list = { id: 'b'.repeat(24), idBoard: board.id };

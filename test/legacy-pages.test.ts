@@ -8,8 +8,9 @@ test('legacy pages are identical built HTML, retaining absolute assets without r
   const directory = await mkdtemp(join(tmpdir(), 'trello-exporter-build-test-'));
   try {
     await mkdir(join(directory, 'assets'));
+    await mkdir(join(directory, 'pages'));
     for (const page of pageNames) {
-      await writeFile(join(directory, `${page}.html`), `<script src="/trello-exporter/assets/${page}-hashed.js"></script>`);
+      await writeFile(join(directory, 'pages', `${page}.html`), `<script src="/trello-exporter/assets/${page}-hashed.js"></script>`);
     }
     const close = legacyPages(directory).closeBundle;
     expect(typeof close).toBe('function');
