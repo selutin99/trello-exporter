@@ -1,0 +1,14 @@
+{
+  "name": "trello-exporter",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Portable Trello board snapshots; initial API and desktop compatibility prototype.",
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "dev": "node scripts/serve-prototype.js",
+    "check": "node --check prototype/api.js && node --check prototype/scope.js && node --check prototype/probe.js && node --check prototype/connector.js && node --check prototype/authorize.js"
+  }
+}

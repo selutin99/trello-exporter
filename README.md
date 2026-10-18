@@ -3,7 +3,8 @@
 An open-source project for saving a Trello board's current state and rebuilding
 that board from a portable snapshot.
 
-**Status: specification draft. No application is implemented yet.**
+**Status: specification draft and early compatibility prototype. Full snapshot
+export and restore are not implemented yet.**
 
 The primary formats are JSON and ZIP. ZIP bundles the snapshot with downloaded
 attachments so that recovery does not depend on the original files remaining
@@ -35,6 +36,23 @@ backups, and synchronization are outside the initial release.
 
 These are requirements awaiting implementation and validation. Windows Desktop
 and other browsers require separate compatibility checks before support is claimed.
+
+## Run the compatibility prototype
+
+Node.js 20 or later is required. No third-party packages are needed.
+
+```sh
+npm test
+npm run check
+npm run dev
+```
+
+Open the local address printed by the server. The standalone screen checks RU/EN
+and local file handling. Trello OAuth requires registering the connector as a
+Power-Up and opening it from inside the test board.
+
+See [prototype setup and test boundaries](docs/PROTOTYPE.md). The current UI makes
+only a metadata read for the explicitly configured board. Writes are disabled.
 
 ## Documentation
 
