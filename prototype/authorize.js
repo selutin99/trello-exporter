@@ -8,13 +8,25 @@ status.textContent = translations[locale].callback;
 if (document.readyState !== 'complete') {
   await new Promise(resolve => window.addEventListener('load', resolve, { once: true }));
 }
+let failureCode = 'CALLBACK_CONFIG_INVALID';
 try {
   const settings = runtimeSettings(window.location.href);
-  if (!settings.clientId || !window.TrelloPowerUp) throw new Error();
+  if (!settings.clientId) throw new Error();
+  failureCode = 'CALLBACK_SDK_UNAVAILABLE';
+  if (!window.TrelloPowerUp) throw new Error();
+  failureCode = 'CALLBACK_SDK_INIT_FAILED';
   const t = window.TrelloPowerUp.iframe(settings.oauthOptions);
-  await t.getOAuth2ApiClient().redirectUriCallback();
+  const client = t.getOAuth2ApiClient();
+  failureCode = 'CALLBACK_OPENER_BLOCKED';
+  // The official SDK needs this same-origin callback to reach the opening
+  // Power-Up frame. Diagnose a missing/isolated opener without exposing URLs.
+  const canReturn = typeof window.opener?.authorize === 'function';
+  failureCode = 'CALLBACK_OPENER_UNAVAILABLE';
+  if (!canReturn) throw new Error();
+  failureCode = 'CALLBACK_RETURN_FAILED';
+  await client.redirectUriCallback();
   status.textContent = translations[locale].callbackDone;
 } catch {
   // Auth codes and SDK error details must never be written to the DOM or logs.
-  status.textContent = translations[locale].callbackFailed;
+  status.textContent = `${translations[locale].callbackFailed} (${failureCode})`;
 }
