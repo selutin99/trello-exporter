@@ -1,18 +1,28 @@
-export type ScopeErrorCode = 'BOARD_SCOPE_BLOCKED' | 'BOARD_NOT_VERIFIED' | 'WRITES_DISABLED';
-export type ApiErrorCode = 'AUTH_REQUIRED' | 'NETWORK_ERROR' | 'WRITE_RESULT_UNKNOWN'
-  | 'INVALID_RESPONSE' | 'RATE_LIMIT_WAIT' | 'API_REQUEST_FAILED';
+import { ApiErrorCode, ScopeErrorCode } from '../shared/error-codes';
 
-/** A fixed diagnostic code, with no response body, URL, or authentication detail. */
+/** A fixed diagnostic code, with no response body, URL, or authentication detail */
 export class ApiError extends Error {
-  constructor(readonly code: ApiErrorCode, readonly status: number | null = null) {
+  /**
+   * Creates a failure with a stable, non-sensitive diagnostic code
+   * @param code - Serialized failure identifier
+   * @param status - HTTP status when available
+   */
+  constructor(
+    readonly code: ApiErrorCode,
+    readonly status: number | null = null,
+  ) {
     super(code);
     this.name = 'ApiError';
   }
 }
 
-/** Rejects operations outside the explicitly selected test board. */
+/** Rejects operations outside the explicitly selected test board */
 export class ScopeError extends Error {
-  constructor(readonly code: ScopeErrorCode = 'BOARD_SCOPE_BLOCKED') {
+  /**
+   * Creates a failure with a stable, non-sensitive diagnostic code
+   * @param code - Scope failure identifier
+   */
+  constructor(readonly code: ScopeErrorCode = ScopeErrorCode.BoardScopeBlocked) {
     super(code);
     this.name = 'ScopeError';
   }

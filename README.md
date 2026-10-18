@@ -39,7 +39,7 @@ and other browsers require separate compatibility checks before support is claim
 
 ## Run the compatibility prototype
 
-Use Node.js 24, or a compatible runtime (20.19+ / 22.12+). The application is
+Use Node.js 24, or a compatible runtime (20.19+ / 22.13+). The application is
 written in strict TypeScript with Vite. It is a single npm project.
 
 ```sh
@@ -55,9 +55,18 @@ Power-Up and opening it from inside the test board.
 See [prototype setup and test boundaries](docs/PROTOTYPE.md). The current UI makes
 only a metadata read for the explicitly configured board. Writes are disabled.
 
-`npm run check` checks types, runs offline tests, and builds `dist/`.
-`npm run preview` serves that build at `/trello-exporter/probe.html`. GitHub Actions checks the same code,
-scans Git history for secrets, and publishes only the built files to Pages.
+`npm run check` checks types, TypeScript/CSS lint, code smells, formatting,
+coverage thresholds, and the production build. Use `npm run format` to apply
+formatting and `npm run lint:fix` for supported lint fixes.
+`npm run preview` serves that build at `/trello-exporter/probe.html`. GitHub Actions
+checks the same code, scans Git history for secrets, and uploads a coverage artifact.
+It does not deploy a website. GitHub Pages is disabled; live Power-Up checks
+require a separately configured HTTPS host.
+
+`npm run test:coverage` generates HTML, LCOV, JSON summary, and console reports in
+ignored `coverage/`. Minimum coverage is 90% for statements/functions/lines and
+85% for branches. Tests mirror `src/`, for example `src/api/client.ts` and
+`test/api/client.test.ts`. See [architecture](docs/ARCHITECTURE.md).
 
 Live checks passed in Chrome and Trello Desktop on macOS: the board button and
 modal, JSON download, local streaming of a 200 MiB file, RU/EN, and a scoped board
@@ -67,7 +76,8 @@ handling still needs work. These checks do not validate full JSON/ZIP snapshots.
 
 ## Documentation
 
-The initial design documents are in Russian:
+Project documentation and code comments are in English; the product supports
+Russian and English:
 
 - [Product specification and release scope](docs/SPECIFICATION.md)
 - [Snapshot and archive format](docs/SNAPSHOT_FORMAT.md)

@@ -27,3 +27,15 @@ attachments. The build generates compatibility HTML for existing `/prototype/`
 URLs; changing those URLs may break registered OAuth callbacks.
 
 Contributions are distributed under the project's [MIT license](LICENSE).
+
+Keep tests parallel to the source tree, such as `test/api/client.test.ts` for
+`src/api/client.ts`. Keep code, comments, documentation, and issue/PR text in
+English. Russian belongs in localized product messages and deliberate Unicode
+fixtures. Public TSDoc summaries have no trailing period and document parameters,
+return values, and actual failures using `@param`, `@returns`, and `@throws`.
+Use named enums for stable errors, states, and other repeated protocol values.
+
+`npm run check` runs all local quality gates. Coverage includes executable source
+files, including entry points, with minimum 90% statements/functions/lines and
+85% branches. Use `npm run format` and `npm run lint:fix` to apply supported fixes.
+CI uploads coverage without publishing GitHub Pages.

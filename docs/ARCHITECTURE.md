@@ -1,74 +1,109 @@
-# Структура приложения
+# Application structure
 
-Текущая реализация — проверка совместимости Power-Up, а не полный экспортёр.
-Код написан на TypeScript со строгой проверкой типов. Vite собирает многостраничный
-статический сайт, Vitest выполняет тесты без доступа к настоящим доскам.
+The current implementation is a Power-Up compatibility probe, not the full
+snapshot exporter. It uses strict TypeScript, Vite for a static multi-page build,
+and Vitest for offline tests with synthetic data.
 
 ```text
 src/
-  app/                 подключение интерфейса, DOM и скачивание файлов
-  trello/              адаптер официального SDK, коннектор, OAuth callback, URL
-  api/                 API, транспорт, повторы, валидация и границы одной доски
-  core/                операции, отмена, отчёт, диагностика, потоковое чтение файла
-  pages/               HTML: connector, probe, authorize, privacy
+  api/                 scoped API client, transport, validation, and retry policy
+  app/                 application wiring, DOM view, and local downloads
+  core/                checks, cancellation, reports, diagnostics, and file streams
+  config/              reviewed public service URLs and HTML URL placeholders
+  shared/              stable error code enums shared across domains
+  trello/              official SDK adapter, connector, OAuth callback, and URLs
+  pages/               connector, probe, authorize, and privacy HTML
   styles/              CSS
-  assets/icons/        исходная SVG-иконка Power-Up
+  assets/icons/        source Power-Up SVG
   i18n/
-    locales/en.ts      английские строки и контракт ключей
-    locales/ru.ts      русский перевод с проверкой того же контракта
-    index.ts           выбор языка и безопасное текстовое отображение
-    types.ts           типы сообщений
-vite.config.ts         сборка и совместимость прежних опубликованных URL
-test/                  синтетические модульные и DOM-проверки
+    locales/en.ts      English messages and the message-key contract
+    locales/ru.ts      Russian messages checked against that contract
+    index.ts           locale selection and safe text rendering
+    types.ts           locale enum and message types
+test/                  mirrors src/ directories and module names
+  helpers/             shared synthetic browser and SDK setup
+  config/              build configuration checks
+  repository/          repository hygiene checks
+vite.config.ts         local build configuration and legacy URL compatibility
 ```
 
-## Границы модулей
+## Module boundaries
 
-`src/api/` не зависит от SDK, DOM, переводов или интерфейса.
-Он получает функцию доступа к токену и Web API транспорт. Публичный фасад не
-принимает произвольные API-пути. Сначала связывает shortLink и контекст с ID
-выбранной доски; затем проверяет принадлежность списков. Запись выключена по
-умолчанию. Перед созданием карточки список проверяется повторно. Это сокращает
-риск записи в перенесённый список, но API не даёт атомарной проверки вместе с POST.
+`src/api/` is independent of the SDK, DOM, translations, and UI. It receives a
+token provider and injectable Web API boundaries. The facade does not accept
+arbitrary endpoints. It binds the selected short link and SDK context to a
+canonical board ID, validates child ownership, and disables writes by default.
+Before creating a card it rechecks list ownership. Trello does not provide an
+atomic ownership check combined with that POST, so a concurrent move remains a
+platform limitation.
 
-`src/core/` не зависит от клиента Trello или представления.
-Он управляет одной операцией, освобождает интерфейс при отмене ожидания SDK,
-не принимает запоздалые результаты отменённой операции и хранит снимки отчёта.
-Неизвестные ошибки заменяются фиксированным кодом; URL, токены и SDK-сообщения
-в диагностику не копируются. Работа с файлом использует поток с одним читающим
-обработчиком. Приложение передаёт только безопасные проекции API-ответов.
+`src/core/` is independent of the API client and view. It owns one check at a
+time, releases the UI when SDK waiting is cancelled, rejects late results from
+cancelled checks, and returns defensive report snapshots. It shares only stable
+error-code definitions with the API layer. Unknown errors become fixed diagnostic
+codes; raw SDK messages, URLs, and tokens are not copied. File checks use a single
+stream reader instead of buffering the entire file.
 
-Это один npm-проект без workspaces. Разделение — обычные TypeScript-модули
-внутри `src/`; независимая публикация npm не требуется для MVP.
-TSDoc описывает поведение и ограничения публичных операций; типы задаются самим
-TypeScript. `skipLibCheck` пропускает проверку деклараций внешних библиотек,
-но не ослабляет строгую проверку исходников и тестов проекта.
+This is one npm project without workspaces. Stable machine values use string
+enums such as `ApiErrorCode.RateLimitWait`, `EventCode.CheckStarted`, and
+`CallbackStage.Completed`; their serialized strings remain compatible with older
+reports. Domain enums live beside their domain, while shared error codes live in
+`src/shared/`.
 
-## Ресурсы и публикация
+Public contracts use TSDoc with summaries without trailing periods and applicable
+`@param`, `@returns`, and `@throws` tags. TypeScript remains the source of type
+information. `skipLibCheck` skips dependency declaration checking, not strict
+checking of this project's code and tests. TypeScript 6.0.3 matches the supported
+range of the installed typescript-eslint release.
 
-HTML, CSS, иконки и переводы не смешиваются в одной папке. SVG импортируется
-коннектором и получает хешированное имя при сборке. Строки интерфейса обновляются
-через `textContent`. Статичная страница обработки данных содержит обе языковые
-версии целиком, чтобы её можно было читать без JavaScript.
+## Service configuration
 
-Корень Vite — `src/`, HTML находится в `src/pages/`. При сборке готовые HTML
-переносятся в корень `dist/`. Только результат `dist/` публикуется в Pages;
-он исключён из Git. Пути ресурсов начинаются с `/trello-exporter/`. Для другого
-пути хостинга нужно изменить `base` в конфигурации Vite.
+`src/config/services.ts` is the single source for Trello API/board origins, the
+official SDK URL, connected-app management, and support links. Both API code and
+Vite HTML substitution use it. URL placeholders are resolved before serving or
+building HTML, including the privacy page that works without JavaScript. API
+origins are not taken from query parameters or imported files: this prevents
+untrusted runtime settings from redirecting bearer tokens. Standard URL schemes
+and the SVG XML namespace are not deployment-specific service endpoints.
 
-Старые `/prototype/connector.html`, `probe.html`, `authorize.html` и `privacy.html`
-генерируются как копии готовых страниц. В частности, OAuth callback не использует
-редирект: его query и fragment остаются доступными официальному SDK. Runtime URL
-содержат публичный client ID и выбранную доску; они не записываются в исходники.
+## Resources and hosting
 
-## Проверки
+HTML, CSS, icons, and translations have separate directories. The connector
+imports the SVG, which receives a hashed asset filename during the build.
+Translations and diagnostic content use `textContent`, never HTML interpretation.
+The public data-handling page includes both product languages so it can be read
+without JavaScript. Code, comments, repository documentation, and community
+forms are in English; Russian is used for localized product content and deliberate
+Unicode fixtures.
 
-`npm run check` выполняет строгую проверку типов, тесты и production-сборку.
-Тесты покрывают границы доски, проверку ответов, повторы GET и неопределённый
-результат POST, отмену, поздние ответы SDK, безопасную диагностику, потоковый
-файл 200 МиБ, DOM, локализацию и сборку прежних URL. Они не заменяют живую проверку
-iframe в Chrome и Trello Desktop или будущего полного JSON/ZIP-цикла.
+Vite's root is `src/`; HTML sources are under `src/pages/`. The build moves HTML
+to the root of the ignored `dist/` directory. Asset paths use `/trello-exporter/`;
+change Vite's `base` when choosing a different hosting path.
 
-Workflow проверяет всю Git-историю Gitleaks с полной редакцией находок в логах.
-Версия сканера и SHA-256 архива закреплены, Actions закреплены по commit SHA.
-Публикация разрешена только после успешных проверок ветки `main`.
+The build also creates legacy `/prototype/*.html` aliases without redirects, so
+OAuth query and fragment data can reach the official SDK unchanged on a compatible
+host. These aliases do not publish a site. GitHub Pages is disabled, CI has no
+deployment job, and `.nojekyll` is unnecessary. Live Power-Up checks now require a
+separately configured HTTPS host and matching registered connector/callback URLs.
+
+## Quality checks
+
+`npm run check` performs type checking, ESLint checks for TypeScript and CSS,
+SonarJS code-smell analysis, Prettier formatting checks, tests with V8 coverage
+thresholds, and a production build. Coverage includes all executable `src/**/*.ts`
+files, including application and SDK entry points; type-only `types.ts` files are
+excluded. HTML, LCOV, JSON summary, and console reports are generated locally in
+ignored `coverage/`. CI uploads these as a seven-day artifact, never as Pages.
+
+Tests mirror source paths, for example `src/api/client.ts` and
+`test/api/client.test.ts`. Repository and build checks use dedicated test folders.
+They exercise board scope, response validation, GET retries, uncertain POST
+results, cancellation, late SDK completion, safe diagnostics, a streamed 200 MiB
+file, DOM behavior, localization, and callback paths. SDK and HTTP boundaries are
+stubbed. These tests do not establish a working full JSON/ZIP restore cycle.
+
+CI has separate secrets and quality jobs with read-only repository permissions.
+Gitleaks scans all fetched Git history with redacted output. Its version and
+archive checksum are fixed. Action SHAs are defined once as YAML anchors in the
+workflow's top-level block; steps use short aliases because `uses:` does not
+support environment expressions. No Pages or deployment permissions are granted.

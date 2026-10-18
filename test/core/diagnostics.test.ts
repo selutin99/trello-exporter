@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { callbackStage, saveCallbackStage } from '../src/core';
+import { callbackStage, saveCallbackStage } from '../../src/core';
 
 test('callback diagnostics accept only fixed stages and never persist arbitrary errors or URLs', () => {
   const saved: string[][] = [];

@@ -1,35 +1,50 @@
-# Проверка репозитория, 18 октября 2026
+# Repository audit — October 18, 2026
 
-Перед рефакторингом проверены все доступные refs после `git fetch --all --tags`
-и текущий каталог проекта. Gitleaks 8.30.1 не обнаружил секретов в 11 коммитах
-и рабочих файлах. Использован официальный бинарный релиз с проверкой SHA-256;
-вывод полностью редактируется через `--redact=100`. Отчёты сканирования находятся
-вне репозитория. Проверка не доказывает отсутствие всех возможных утечек.
+The initial audit covered all available refs after `git fetch --all --tags` and
+the working files. Gitleaks 8.30.1 found no secrets in the initial 11 commits or
+workspace. The official binary archive was checked against its published SHA-256.
+Output uses `--redact=100`, and audit reports remain outside the repository.
+Scanning cannot prove the absence of every possible secret.
 
-В GitHub включены secret scanning и push protection. Открытых предупреждений
-secret scanning на момент проверки нет. История не переписывалась: обнаруженных
-учётных данных, требующих удаления из Git и отзыва, нет.
+GitHub secret scanning and push protection are enabled. There were no open
+secret-scanning alerts when checked. History was not rewritten: no detected
+credentials required revocation or removal. Subsequent refactoring history and
+source/lockfile scans also found no secrets.
 
-После миграции повторно проверены исходники, документация и lockfile — находок
-нет. `npm audit` для закреплённых зависимостей вернул 0 известных уязвимостей.
+Before refactoring, the largest historical blob was the product specification at
+32,126 bytes. No real exports, 200 MiB attachments, or large binaries were found.
+Dependencies, build output, coverage reports, runtime data, `.env`, and editor
+settings are excluded from Git.
 
-Самый большой исторический blob до рефакторинга — спецификация, 32 126 байт.
-Экспортов, вложений 200 МиБ или больших бинарных файлов в истории не найдено.
-Удалять спецификацию ради размера не требуется. `node_modules/`, `dist/`, отчёты,
-локальные данные, `.env` и настройки редактора исключены из Git.
+## Current quality tooling
 
-OAuth-токены обслуживает официальный SDK. Они не должны попадать в URL,
-localStorage приложения, отчёты или журналы. Публичный client ID не является
-секретом, но значения действующей тестовой конфигурации тоже не коммитятся.
-В локальном хранилище приложения допустимы только выбор языка и фиксированный
-этап диагностики callback.
+`npm audit` returned no known vulnerabilities after selecting the current tool
+set. Stylelint was evaluated but its dependency chain contained the unpatched
+`braces` issue [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm).
+The project instead uses ESLint's official CSS language plugin and Prettier,
+without adding that dependency chain. TypeScript matches typescript-eslint's
+supported peer range; forced dependency resolution is not used.
 
-CI повторяет сканирование Git-истории при изменениях; тест гигиены блокирует
-отслеживаемые файлы от 1 МиБ, runtime-каталоги и типичные бинарные экспорты.
-Для нового вида разрешённых ресурсов правило следует пересмотреть явно.
-Диагностические ошибки фильтруются по списку известных кодов, API возвращает
-проверенные проекции полей, а тесты используют синтетические данные.
+The official SDK manages OAuth tokens. Application code must not put them in
+URLs, application localStorage, reports, logs, or Git. A public client ID is not a
+secret, but actual test deployment settings also stay out of source. Application
+localStorage may contain only a language preference and a fixed callback stage.
 
-При обнаружении настоящего секрета сначала отозвать или заменить его у
-провайдера, затем оценить удаление из истории. Простого удаления файла из
-последнего коммита недостаточно. Не публиковать секрет в issue или CI-логе.
+CI scans all Git history on changes. Repository hygiene tests reject tracked
+runtime/generated directories, typical binary exports, and files of 1 MiB or
+larger. Introducing a new legitimate resource type requires an explicit review of
+that rule. Diagnostics allowlist named codes, API responses are projected to
+validated fields, and all committed test data is synthetic.
+
+## Hosting
+
+GitHub Pages publishing has been removed from CI, including Pages artifacts,
+deployment jobs, and Pages/OIDC permissions. The existing Pages site is removed
+at the user's request. Coverage is retained only as a CI artifact. The old hosted
+Power-Up URLs therefore require replacement before further live integration tests.
+
+## If a secret is found
+
+Revoke or rotate it at the provider first, then assess history cleanup. Removing
+only the current file does not remove historical copies. Never paste a secret
+into an issue or CI log.

@@ -1,304 +1,284 @@
-# Trello Exporter: спецификация продукта
+# Trello Exporter: product specification
 
-Статус: черновик для обсуждения; начат технический прототип совместимости.
-Основной экспорт и восстановление пока не реализованы.
-Редакция: 0.2 от 18 октября 2026 года.
-Лицензия проекта: MIT.
+Status: discussion draft with an early compatibility prototype. Full snapshot
+export and restoration are not implemented. Revision 0.2, October 18, 2026.
+Project license: MIT.
 
-## 1. Задача
+## 1. Problem
 
-Пользователь сохраняет текущее содержимое доски Trello в переносимый файл,
-а затем может воссоздать из него новую доску. Экспорт должен оставаться полезным
-без работающей исходной доски и без хранилища резервных копий конкретного сервиса.
+A user saves a Trello board's current content into a portable file and later
+recreates it as a new board. The export must remain useful without a working
+source board or a particular backup service's storage.
 
-Главный сценарий: «сохранил доску → получил архив с данными и файлами → загрузил
-архив → проверил план → получил новую доску и отчёт о восстановлении».
+Primary workflow: save board → receive an archive containing data and files →
+load archive → review the plan → receive a new board and a restoration report.
 
-Снимок описывает текущее состояние объектов, а не последовательность событий,
-из которой пользователь должен самостоятельно восстанавливать доску.
-Комментарии считаются содержимым карточек; журнал перемещений и изменений — нет.
+A snapshot describes current object state, not an event sequence the user must
+replay. Comments are card content; movement and edit history are not.
 
-## 2. Форматы
+## 2. Formats
 
-| Формат | Назначение | Обратная загрузка |
-| --- | --- | --- |
-| JSON | Структурированный снимок с метаданными вложений | Да, для собственного формата проекта; сами файлы отсутствуют |
-| ZIP | Тот же JSON, файлы вложений и манифест целостности | Да, основной формат восстановления |
-| CSV | Плоская таблица карточек для анализа | Не входит в начальную версию |
-| XLSX | Книга с отдельными листами для связанных сущностей | Не входит в начальную версию |
-| Markdown | Читаемое представление доски и карточек | Не планируется в начальных релизах |
-| HTML | Просмотр сохранённой доски локально, без Trello | Не планируется в начальных релизах |
-| PDF | Фиксированный документ для печати и передачи | Не планируется в начальных релизах |
+| Format   | Purpose                                                 | Reverse import                             |
+| -------- | ------------------------------------------------------- | ------------------------------------------ |
+| JSON     | Structured snapshot with attachment metadata            | Project format only; file bytes are absent |
+| ZIP      | The same JSON, attachment files, and integrity manifest | Primary restoration format                 |
+| CSV      | Flat card table for analysis                            | Outside the initial release                |
+| XLSX     | Workbook with related entities on separate sheets       | Outside the initial release                |
+| Markdown | Readable board and card representation                  | Not planned for initial releases           |
+| HTML     | Local saved-board browsing without Trello               | Not planned for initial releases           |
+| PDF      | Fixed document for printing and sharing                 | Not planned for initial releases           |
 
-Все представления строятся из одной нормализованной модели снимка. Табличные
-и документные форматы не используются как промежуточный этап восстановления.
-Правила JSON и ZIP описаны в [формате снимка](SNAPSHOT_FORMAT.md).
+Every representation derives from one normalized snapshot model. Spreadsheet
+and document formats are not restoration intermediates. JSON/ZIP rules are in
+[the snapshot contract](SNAPSHOT_FORMAT.md).
 
-## 3. Пользовательский интерфейс и архитектурные границы
+## 3. UI and architecture boundaries
 
-Целевой интерфейс — Trello Power-Up с действиями «Экспортировать снимок»
-и «Восстановить из файла». Пользователь работает с установленным приложением
-Trello Desktop; поддержка этого сценария обязательна для MVP. Общая модель данных
-и логика преобразований должны быть отделены от интерфейса и клиента Trello API.
+The target is a Trello Power-Up offering “Export snapshot” and “Restore from
+file”. Support for the installed Trello Desktop application is mandatory for
+the MVP. Shared data/conversion logic must be separate from the UI and API client.
 
-Предпочтительный вариант — обработка данных на устройстве пользователя без
-обязательного сервера, который хранит доски. Возможность работы с авторизованными
-вложениями, большими ZIP и PDF необходимо проверить до выбора архитектуры.
-Прототип использует TypeScript, Vite и статический хостинг GitHub Pages;
-структура описана в [архитектуре](ARCHITECTURE.md). Необходимость вспомогательного
-локального или серверного компонента для полного MVP пока не зафиксирована. Поддержка Trello Desktop
-совместима с обработкой данных на устройстве и сама по себе не требует сервера
-для приёма досок и вложений.
+Prefer processing on the user's device without requiring a project server to
+store boards. Authorized attachments, large ZIP files, and PDF processing must
+be validated before finalizing the full architecture. The prototype uses
+TypeScript and Vite; see [architecture](ARCHITECTURE.md). GitHub Pages has been
+removed at the user's request. Live checks require a separately configured HTTPS
+host. Whether the full MVP needs an auxiliary local/server component remains
+undecided. Desktop support alone does not require a server receiving board data.
 
-Для экспорта запрашивается доступ на чтение; для восстановления — необходимый
-доступ на запись. Если механизм авторизации Trello не позволяет такой переход,
-ограничение и фактически запрашиваемые права должны быть объяснены пользователю.
-Токены не попадают в экспорт, отчёты, публичные логи и репозиторий.
+Request read access for export and the required write access for restoration.
+If Trello cannot support incremental permission escalation, explain the actual
+granted permissions. Tokens must never enter exports, reports, public logs, or Git.
 
-Чтение и восстановление данных реализуются через Trello REST API, интерфейс —
-через официальный Power-Up SDK. Для нового прототипа выбран public OAuth 2.0
-client со штатным SDK-потоком. У Power-Up обязательны board read/write scopes
-в пределах Workspace; «доступ только к одной доске» не обещается. Текущий
-диагностический интерфейс записи не выполняет. Подробнее — в
-[описании прототипа](PROTOTYPE.md).
+Board reads and restoration use the Trello REST API; the interface uses the
+official Power-Up SDK. The prototype uses a public OAuth 2.0 client and the
+standard SDK flow. Power-Ups require board read/write scopes across the authorized
+Workspace; do not promise permission limited to one board. The current interface
+performs no writes. See [the prototype](PROTOTYPE.md).
 
-Прототип подтвердил чтение метаданных через API в Chrome и Trello Desktop macOS.
-Рабочий проверенный сценарий первого подключения — OAuth на той же доске в Chrome,
-затем возвращение в Desktop, который использует сохранённую SDK авторизацию.
-Прямой возврат OAuth из Desktop пока не подтверждён. Полный JSON/ZIP-цикл,
-вложения из Trello и восстановление этими проверками ещё не покрыты.
+Live checks previously confirmed API metadata reads in Chrome and Trello Desktop
+on macOS. The tested initial path was OAuth on the same board in Chrome, then
+returning to Desktop using SDK-saved authorization. Direct Desktop OAuth return
+is not confirmed. Those checks did not cover full JSON/ZIP export, Trello
+attachment downloads, or restoration.
 
-### Среды запуска
+### Required environments
 
-В MVP обязательны Trello Desktop на macOS и веб-версия Trello на компьютере.
-Для веб-версии первым проверяется актуальный Chrome. Поддержка Trello Desktop
-на Windows и других браузеров объявляется только после отдельных проверок.
-Мобильные приложения в MVP не входят.
+The MVP requires Trello Desktop on macOS and desktop Trello web, initially in
+current Chrome. Windows Desktop and other browsers may be claimed only after
+separate validation. Mobile apps are outside the MVP.
 
-Power-Up должен открываться из доски в обеих обязательных средах. Авторизация,
-доступ к вложениям, выбор локального JSON/ZIP, сохранение экспорта и отчёта
-проверяются в каждой среде. Внешнее окно для авторизации допустимо с возвратом
-к операции в Trello Desktop. Перенос всего экспорта или восстановления в браузер
-не считается выполнением требования поддержки desktop.
+The Power-Up must open from the board in both environments. Test authorization,
+attachment access, local JSON/ZIP selection, export saving, and report saving in
+each client. An external consent window is acceptable if the user can return to
+the operation in Desktop. Moving the entire export/restore operation to a browser
+does not satisfy Desktop support.
 
-До разработки основного интерфейса нужен минимальный прототип этих операций
-в реальном Trello Desktop. Если ограничения клиента мешают работе с файлами,
-архитектура уточняется до реализации полного экспорта. Расширение Chrome
-не может быть единственным способом запуска.
+Before the main interface, prototype these operations in the actual Desktop
+client. If file restrictions block the intended flow, refine the architecture
+before full implementation. A Chrome extension cannot be the only entry point.
 
-### Русский и английский
+### Russian and English
 
-Русский (`ru`) и английский (`en`) доступны с первого MVP. Локализуются кнопки,
-настройки, предпросмотр, прогресс, предупреждения, ошибки и читаемые отчёты.
-Первоначальный язык выбирается по locale, переданной Trello; есть ручной
-переключатель RU/EN с сохранением предпочтения. Для неизвестной locale
-используется английский.
+Both `ru` and `en` are required from the first MVP. Localize buttons, settings,
+preview, progress, warnings, errors, and readable reports. Initially use the SDK
+locale, provide a manual RU/EN switch, and retain the preference. Unknown locales
+fall back to English.
 
-Тексты хранятся в отдельных словарях с одинаковым набором ключей. Даты и числа
-отображаются с учётом языка; даты в архиве остаются в UTC. Ключи JSON и машинные
-коды ошибок стабильны и не переводятся. Содержимое доски сохраняется на языке
-источника. Один архив импортируется при любом языке интерфейса.
+Messages live in separate dictionaries with identical keys. Display numbers and
+dates according to the interface locale; archive dates remain UTC. JSON keys
+and machine codes are stable and untranslated. Board content stays in its source
+language. An archive is importable under either interface language. Repository
+documentation, comments, and code identifiers use English.
 
-### Целевой объём MVP
+### MVP workload
 
-Исходный сценарий — десятки карточек, несколько списков, сотни пунктов
-чек-листов на одной карточке и 100–200 МБ вложений суммарно. Счётчики чек-листов
-на карточке относятся ко всем её чек-листам; нельзя ограничивать сбор первыми
-пунктами или принимать их за один чек-лист.
+The initial user scenario includes dozens of cards, several lists, hundreds of
+checklist items on one card, and 100–200 MB of attachments overall. A card's
+checklist counter aggregates its checklists: do not truncate collection to the
+first items or mistake the counter for a single checklist.
 
-Приёмочная синтетическая доска должна включать не менее 100 карточек,
-2 000 пунктов чек-листов суммарно, не менее 600 пунктов на одной карточке,
-распределённых по нескольким чек-листам, и 200 МиБ файлов вложений суммарно.
-200 МиБ — 209 715 200 байт, что покрывает указанный сценарий с небольшим запасом.
-Это минимальный проверяемый профиль, а не обещание нового ограничения Trello
-или максимального размера поддерживаемой доски.
+The synthetic acceptance board must contain at least 100 cards, 2,000 checklist
+items in total, at least 600 items across multiple checklists on one card, and
+200 MiB of attachment files (209,715,200 bytes). This is a minimum acceptance
+workload, not a new Trello limit or a claimed maximum supported board size.
 
-Загрузка вложений имеет ограниченный параллелизм. Обработка архива должна
-избегать одновременного хранения всех исходных файлов и нескольких полных
-копий ZIP в памяти. Выбор потоковой или промежуточной дисковой обработки
-зависит от возможностей desktop-клиента и подтверждается замерами памяти.
-Длительная операция показывает этап, количество объектов, объём файлов
-и позволяет отмену; тяжёлая обработка не должна блокировать интерфейс.
-Первая версия может требовать оставлять рабочее окно открытым и предупреждает
-о последствиях его закрытия; фоновое продолжение после закрытия не обещается.
+Bound concurrent attachment downloads. Avoid retaining all original files plus
+multiple full ZIP copies in memory. Choose streaming or temporary disk storage
+based on client capabilities and measured peak memory. Long operations show the
+stage, object counts, and file volume, support cancellation, and keep the UI
+responsive. The first release may require keeping its window open, explaining
+what closure does; background continuation after closure is not promised.
 
-## 4. Экспорт
+## 4. Export
 
-1. Пользователь выбирает доску, JSON или ZIP и состав данных.
-2. По умолчанию включаются архивные списки и карточки, комментарии и сведения
-   о вложениях; ZIP также включает доступные файлы вложений.
-3. Приложение проверяет доступ, собирает данные и показывает прогресс.
-4. Для ZIP скачиваются файлы, загруженные в Trello. Внешние вложения сохраняются
-   как ссылки: произвольные сайты, Google Drive и другие хранилища не обходятся.
-5. Пользователь получает файл и сводку: сколько объектов сохранено, какие
-   разделы исключены и какие данные получить не удалось.
+1. Select a board, JSON or ZIP, and included content.
+2. Default to archived lists/cards, comments, and attachment metadata; ZIP also
+   includes available attachment bytes.
+3. Verify access, collect content, and show progress.
+4. For ZIP, download Trello-uploaded files. Preserve external attachments as links;
+   do not crawl arbitrary sites, Google Drive, or other storage services.
+5. Return the file and counts, intentionally excluded sections, and unavailable data.
 
-Ошибка получения карточки или файла не должна выглядеть как успешный полный
-экспорт. Пользователь может повторить операцию либо явно скачать частичный
-снимок с перечислением пропусков. Если доска недоступна целиком, экспорт завершается
-ошибкой и не создаёт «пустой успешный снимок».
+A failed card/file read must not look like a successful complete export. Offer a
+retry or an explicitly partial snapshot listing omissions. If the entire board
+is inaccessible, fail instead of producing a successful empty snapshot.
 
-Экспорт читает исходную доску и не изменяет её. Активные и архивные объекты
-получаются явно, с обработкой пагинации и лимитов API. Комментарии читаются
-отдельно с пагинацией; нельзя считать полный журнал последних действий доски
-полным набором комментариев.
+Export only reads the source board. Explicitly retrieve active and archived
+objects with pagination and API-limit handling. Paginate comments separately;
+recent board activity is not a complete comment collection.
 
-### Согласованность снимка
+### Snapshot consistency
 
-Сбор данных занимает время. Первая версия не обещает транзакционный снимок
-на одну точную миллисекунду: карточка может измениться между запросами API.
-В файл записываются начало и конец сбора и результат проверки изменений.
-Изменения отслеживаются по доступным признакам и повторным чтениям; отсутствие
-обнаруженных изменений не является доказательством атомарности.
+Collection takes time. v0.1 does not promise a transactional snapshot at one
+millisecond: objects may change between API calls. Record capture start/end and
+change-detection results. Use available signals and rereads; no detected change
+is not proof of atomicity.
 
-При обнаружении изменений или нарушенных связей приложение предлагает повторить
-сбор либо сохранить снимок с предупреждением. Число автоматических попыток
-ограничено; непрерывно меняющаяся доска не должна приводить к бесконечному экспорту.
+When changes or broken relationships are detected, offer another collection
+attempt or a warned snapshot. Bound automatic retries so a continuously changing
+board cannot cause an endless export.
 
-## 5. Состав данных и точность восстановления в v0.1
+## 5. Data and restoration fidelity in v0.1
 
-Таблица задаёт целевые требования. Поддержка каждого поля должна быть подтверждена
-проверкой API; неподдержанные поля остаются в файле как сведения об источнике
-и явно отмечаются в отчёте.
+These are target requirements. Verify API support for every field. Unsupported
+properties remain source metadata with explicit report limitations.
 
-| Сущность | Сохраняем | Восстанавливаем |
-| --- | --- | --- |
-| Доска | Название, описание, исходные ID/URL, признак архива | Новую закрытую для посторонних доску с названием и описанием; исходный статус архива остаётся метаданными |
-| Списки | Название, порядок, состояние архива | Списки с тем же относительным порядком и состоянием архива |
-| Карточки | Название, Markdown-описание, список, порядок, start/due, dueComplete, архив | Содержимое, даты, относительный порядок и состояние архива |
-| Метки | Названия, цвета, назначения карточкам | Новые метки и их назначения без слияния только по названию |
-| Чек-листы | Названия, порядок, пункты и отметки выполнения | Структуру и состояния пунктов; расширенные назначения и сроки пунктов — после проверки API |
-| Пользовательские поля | Определения, типы, варианты выбора и значения | Поддерживаемые типы и значения при доступности функции в целевом Workspace |
-| Участники | Исходные ID, username, имя, назначения | Назначения только после явного сопоставления с доступными участниками целевой доски |
-| Вложения Trello | Имя, тип, размер, исходная ссылка; в ZIP — доступные байты | Загрузку сохранённых файлов; для JSON без файлов — ссылки с предупреждением |
-| Внешние вложения | Название и безопасная ссылка | Ссылки; доступность внешнего ресурса не гарантируется |
-| Комментарии | Текст, порядок, исходный автор и время | По выбору пользователя — текстовую сводку в одном новом комментарии на карточку с указанием исходных авторов и дат |
-| Обложки | Настройки и связь с вложением, доступные через API | В v0.1 только сохранение метаданных; восстановление отложено |
+| Entity               | Preserve                                                                       | Restore                                                                             |
+| -------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Board                | Name, description, source IDs/URL, archive state                               | New private board with name/description; source archive state remains metadata      |
+| Lists                | Names, relative order, archive state                                           | Equivalent relative order and archive state                                         |
+| Cards                | Name, Markdown description, list, order, start/due, dueComplete, archive state | Content, dates, relative order, archive state                                       |
+| Labels               | Names, colors, card assignments                                                | New labels and assignments; never merge solely by name                              |
+| Checklists           | Names, order, items, completion                                                | Structure and completion; advanced assignees/dates only after API validation        |
+| Custom fields        | Definitions, types, options, values                                            | Supported types and values when available in the target Workspace                   |
+| Members              | Source IDs, usernames, names, assignments                                      | Assignments only after explicit mapping to available target-board members           |
+| Trello attachments   | Name, type, size, source link; available bytes in ZIP                          | Upload saved files; warn when standalone JSON can only recreate links               |
+| External attachments | Name and safe URL                                                              | Links, without guaranteeing external availability                                   |
+| Comments             | Text, order, original author/time                                              | Optional textual summary in one new comment per card, naming original authors/dates |
+| Covers               | Available settings and attachment relationship                                 | Metadata only in v0.1; applying covers is deferred                                  |
 
-Новые объекты получают новые Trello ID и URL. Даты создания, авторство новых
-комментариев и исторический журнал не подменяются. Исторические сведения
-в комментарии-сводке явно обозначаются как текст из снимка.
+New objects receive new Trello IDs/URLs. Creation times, new comment authorship,
+and historical activity are not impersonated. Historical information in a
+comment summary is explicitly identified as text from the snapshot.
 
-Автоматического приглашения людей и копирования прав доступа нет. Новая доска
-создаётся приватной; если политика Workspace этого не допускает, операция
-останавливается до создания доски с объяснением причины.
+Do not automatically invite people or copy access rights. Create a private target
+board; if Workspace policy prevents this, stop before board creation and explain.
 
-## 6. Восстановление
+## 6. Restoration
 
-1. Пользователь открывает собственный JSON или ZIP проекта.
-2. Приложение до любых изменений в Trello проверяет формат, версию, ссылки
-   между сущностями и, для ZIP, состав файлов и контрольные суммы.
-3. Пользователь выбирает целевой Workspace и название новой доски.
-4. Предпросмотр показывает количество создаваемых объектов, архивные данные,
-   недостающие файлы, ограничения, сопоставление участников и обработку комментариев.
-5. После подтверждения создаются доска, определения меток/полей, списки, карточки,
-   чек-листы, значения полей и вложения. Связи переносятся через таблицу старых
-   и новых ID. Архивирование применяется после наполнения объектов.
-6. Приложение перечитывает доступные созданные объекты, проверяет результат
-   и выдаёт ссылку на доску и скачиваемый отчёт.
+1. Open a project-format JSON or ZIP file.
+2. Before any Trello mutation, validate format/version, entity relationships,
+   and ZIP file inventory and checksums.
+3. Select the target Workspace and a name for the new board.
+4. Preview object counts, archived content, missing files, limitations, member
+   mapping, and comment handling.
+5. After confirmation, create the board, labels/field definitions, lists, cards,
+   checklists, field values, and attachments. Map old IDs to new IDs. Apply
+   archiving after content has been populated.
+6. Reread available created objects, verify results, and return a board link and
+   downloadable restoration report.
 
-Восстановление не меняет исходную доску и не обновляет произвольную существующую.
-Импорт в новую доску — намеренное ограничение первой версии.
+Restoration never changes the source or updates an arbitrary existing board.
+Creating a new board is a deliberate first-release restriction.
 
-### Ошибки и повторный запуск
+### Failures and restart
 
-Приложение ведёт локальный журнал задания: ID операции, контрольную сумму снимка,
-ID целевой доски, таблицу соответствий и результаты отдельных шагов. Журнал
-не содержит токенов и не включается в публичные примеры.
+Keep a local job journal with operation ID, snapshot checksum, target board ID,
+ID mappings, and step results. It contains no tokens and is never a public fixture.
 
-При обрыве операция останавливается с указанием уже созданной доски. Продолжение
-разрешено только с журналом той же операции после проверки объектов в Trello.
-Если результат создающего запроса неизвестен, нельзя слепо повторять POST:
-неоднозначность должна быть разрешена проверкой либо показана пользователю.
-Без журнала новый запуск создаёт отдельную доску и предупреждает о возможном дубле.
+On interruption, stop and identify the partially created board. Resume only with
+the same operation's journal after verifying existing Trello objects. Never
+blindly retry a creating POST with an unknown result: resolve ambiguity by
+verification or present it to the user. Without a journal, a new run creates a
+separate board and warns of possible duplication.
 
-Отмена останавливает новые запросы, но не обещает отменить уже выполненные.
-Частичная доска сохраняется со ссылкой и отчётом; автоматического удаления нет.
-Незавершённое восстановление и восстановление с потерями не помечаются как полное.
+Cancellation stops new requests but does not undo completed ones. Retain the
+partial board with its link/report; do not delete it automatically. Interrupted
+or lossy restoration must not be labeled complete.
 
-## 7. Дополнительные форматы
+## 7. Additional formats
 
-| Формат | Планируемое содержимое |
-| --- | --- |
-| CSV | Одна строка на карточку: список, название, описание, даты, метки, участники, архив; связанные коллекции сериализуются в ячейки с документированным разделителем |
-| XLSX | Листы Boards, Lists, Cards, Labels, Members, CardMembers, CardLabels, Checklists, ChecklistItems, CustomFields, CustomFieldValues, Comments, Attachments, ExportReport; связи через исходные ID |
-| Markdown | Индекс доски и отдельные файлы карточек с чек-листами и относительными ссылками на вложения; комплект передаётся ZIP-архивом |
-| HTML | Один локально открываемый файл с доской, списками, карточками и поиском; файлы вложений рядом в ZIP, без обращения к исходной доске и без внешних CDN |
-| PDF | Документ с группировкой по спискам, описаниями, чек-листами, ссылками на вложения и сводкой полноты |
+| Format   | Planned content                                                                                                                                                                              |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CSV      | One row per card: list, name, description, dates, labels, members, archived state; related collections serialized into cells using documented separators                                     |
+| XLSX     | Boards, Lists, Cards, Labels, Members, CardMembers, CardLabels, Checklists, ChecklistItems, CustomFields, CustomFieldValues, Comments, Attachments, ExportReport sheets linked by source IDs |
+| Markdown | Board index and per-card files with checklists and relative attachment links, distributed as ZIP                                                                                             |
+| HTML     | One local board/list/card viewer with search; attachment files beside it in ZIP, no source-board requests or external CDNs                                                                   |
+| PDF      | Document grouped by lists with descriptions, checklists, attachment links, and completeness summary                                                                                          |
 
-Каждый формат указывает время сбора и пропущенные данные. PDF и HTML передают
-содержимое доски; точное воспроизведение интерфейса Trello не требуется.
-XLSX хранит внешние строки как текст, CSV защищается от формульной интерпретации;
-исходный текст без такого преобразования остаётся в JSON.
+Every format identifies the capture interval and omissions. PDF/HTML preserve
+content without reproducing Trello's exact appearance. Store external XLSX
+strings as text and protect CSV cells against formula interpretation. JSON
+retains original text without spreadsheet-specific transformation.
 
-## 8. Безопасность и ограничения
+## 8. Safety and limits
 
-- JSON и ZIP по умолчанию не зашифрованы: интерфейс сообщает об этом при экспорте.
-- Импорт ограничивает размер файла, число ZIP-записей, суммарный распакованный
-  размер, степень сжатия и размеры отдельных записей. Численные пределы выбираются
-  после измерений и проверяются до создания доски.
-- ZIP не может писать за пределы собственного пространства: абсолютные пути,
-  `..`, симлинки, конфликтующие пути и повторные имена записей отвергаются.
-- HTML, Markdown, имена файлов и ссылки считаются недоверенными данными.
-  HTML экранируется, допустимые URL-схемы ограничиваются, вложенный контент
-  не получает возможности исполнять код.
-- В токенизированных и подписанных ссылках нельзя переносить секреты. Если
-  безопасную исходную ссылку получить невозможно, она опускается с записью причины.
-- Контрольные суммы проверяют целостность, но не подтверждают автора архива.
-- Для API нужны ограничение параллелизма, корректная пагинация, обработка 429,
-  backoff для повторяемых запросов и отдельная политика для создающих запросов.
-- Пользователь видит ограничения тарифного плана, размера вложений и доступа;
-  приложение не обещает обойти ограничения Trello.
+- JSON/ZIP are unencrypted by default; explain this during export.
+- Limit input size, ZIP entry count, total extracted bytes, compression ratio,
+  and individual entry size. Choose numerical limits after measurements and
+  validate them before board creation.
+- Reject absolute paths, `..`, symlinks, conflicting paths, and duplicate ZIP
+  entry names; extraction cannot escape its own namespace.
+- Treat HTML, Markdown, filenames, and URLs as untrusted. Escape HTML, restrict
+  schemes, and prevent embedded content from executing code.
+- Do not retain secrets in tokenized/signed URLs. Omit unsafe source URLs with an
+  explanatory issue when a safe form cannot be obtained.
+- Checksums validate integrity, not archive authorship.
+- Bound API concurrency, paginate correctly, handle 429, use backoff for retryable
+  reads, and maintain a separate policy for creating requests.
+- Explain plan, attachment-size, and access restrictions; do not promise to bypass
+  Trello limits.
 
-## 9. Что не входит в начальную версию
+## 9. Outside the initial release
 
-История действий, расписание резервного копирования, синхронизация, сравнение
-версий, объединение с существующей доской, пакетный экспорт Workspace, перенос
-Butler-автоматизаций, настроек сторонних Power-Up, представлений, реакций,
-стикеров, прав доступа и исходных дат создания объектов.
+Activity history, scheduled backups, synchronization, version comparisons,
+merging into existing boards, bulk Workspace export, Butler automations,
+third-party Power-Up state, views, reactions, stickers, access permissions, and
+original object creation timestamps are excluded.
 
-Импорт встроенного JSON Trello — отдельный последующий адаптер. Поддержка
-собственного JSON не должна рекламироваться как поддержка любого JSON-экспорта.
+Built-in Trello JSON import is a later separate adapter. Supporting our own JSON
+must not be advertised as supporting every Trello JSON export.
 
-## 10. Критерии готовности v0.1
+## 10. v0.1 acceptance criteria
 
-1. Синтетическая доска с активными и архивными объектами, Unicode, Markdown,
-   одинаковыми названиями сущностей и пустыми списками проходит JSON/ZIP-экспорт.
-2. ZIP содержит байты доступных файлов; ошибки скачивания и внешние ссылки
-   перечислены в отчёте, отсутствие файлов не скрывается.
-3. Восстановление создаёт отдельную приватную доску. Поддерживаемые значения,
-   связи, состояния и относительный порядок совпадают после нормализации ID.
-4. Сравнение учитывает заявленные исключения: новые ID/URL, авторство и даты,
-   настройки доступа и отдельно подтверждённые пропуски. Потери не маскируются.
-5. Повреждённый архив, неподдерживаемая версия, опасный путь и нарушенные ссылки
-   отвергаются до изменения Trello.
-6. Отключённый доступ, лимит API, сетевой обрыв и неопределённый результат POST
-   не приводят к молчаливому пропуску или автоматическому созданию дублей.
-7. Журнал позволяет безопасно продолжить подтверждённые шаги на той же частичной
-   доске; неизвестные результаты требуют разрешения неоднозначности.
-8. Файлы и отчёты не содержат токенов. JSON без вложений пригоден для восстановления
-   структуры даже после удаления исходной доски; ZIP добавляет сохранённые файлы.
-9. Полный путь авторизации, экспорта, выбора локального файла и восстановления
-   проверен отдельно в Trello Desktop на macOS и в Chrome. Зафиксированы версии
-   клиентов; поддержка desktop не выводится только из успешной проверки браузера.
-10. Синтетический профиль из раздела 3 проходит экспорт и восстановление с файлами
-    общим размером 200 МиБ и длинными чек-листами. Сверяются количество пунктов,
-    отметки выполнения и хеши сохранённых файлов; измеряются время и пиковая память.
-11. На русском и английском проходят одинаковые основные сценарии, включая
-    ошибки и отчёты. Переключение языка не сбрасывает операцию и не меняет данные
-    доски. Ключи переводов совпадают, артефакты совместимы между языками.
+1. A synthetic board with active/archived objects, Unicode, Markdown, duplicate
+   names, and empty lists passes JSON/ZIP export.
+2. ZIP contains available file bytes; report failed downloads and external links
+   explicitly without concealing missing files.
+3. Restore creates a separate private board. Supported values, relationships,
+   states, and relative order match after ID normalization.
+4. Comparison accounts for declared exceptions: new IDs/URLs, authorship/times,
+   access settings, and separately confirmed omissions. Do not disguise loss.
+5. Corrupt archives, unsupported versions, unsafe paths, and invalid references
+   are rejected before changing Trello.
+6. Revoked access, API limits, interrupted networks, and uncertain POST outcomes
+   do not silently skip content or automatically create duplicates.
+7. The journal supports safe continuation on the same partial board; uncertain
+   outcomes require ambiguity resolution.
+8. Files/reports contain no tokens. JSON can restore structure after the source
+   board is deleted; ZIP additionally supplies preserved file bytes.
+9. Authorization, export, local file selection, and restoration are separately
+   tested in macOS Desktop and Chrome with recorded client versions. Browser
+   success alone cannot establish Desktop support.
+10. The section 3 workload passes export/restore with 200 MiB of files and long
+    checklists. Compare item counts, completion states, and file hashes; measure
+    execution time and peak memory.
+11. Equivalent primary flows pass in Russian and English, including errors and
+    reports. Language switching neither resets the operation nor changes board
+    data. Translation keys match and artifacts are compatible across locales.
 
-## 11. Этапы
+## 11. Milestones
 
-| Этап | Результат |
-| --- | --- |
-| Сейчас | Спецификация, формат архива, границы поддержки и открытый репозиторий |
-| Проверка API и клиентов | Сначала авторизация, выбор и сохранение файлов в Trello Desktop macOS и Chrome; затем пагинация, длинные чек-листы, комментарии, 200 МиБ вложений, пользовательские поля, архив и права на одноразовой доске |
-| v0.1 | Power-Up для Trello Desktop macOS и Chrome, RU/EN, JSON/ZIP, предпросмотр, восстановление в новую доску, отчёты и журнал продолжения |
-| v0.2 | CSV/XLSX и адаптер встроенного JSON Trello с явной таблицей потерь |
-| v0.3 | Markdown/HTML для локального просмотра, затем PDF |
+| Stage                 | Outcome                                                                                                                                                                                                    |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current               | Specification, archive contract, compatibility prototype, tests, support boundaries, and open repository                                                                                                   |
+| API/client validation | Authorization and file selection/saving in macOS Desktop and Chrome first; then pagination, long checklists, comments, 200 MiB attachments, custom fields, archives, and permissions on a disposable board |
+| v0.1                  | macOS Desktop/Chrome Power-Up, RU/EN, JSON/ZIP, preview, new-board restoration, reports, and resumable journal                                                                                             |
+| v0.2                  | CSV/XLSX and a built-in Trello JSON adapter with an explicit loss matrix                                                                                                                                   |
+| v0.3                  | Markdown/HTML local viewing, followed by PDF                                                                                                                                                               |
 
-До реализации нужно определить поддерживаемые типы пользовательских полей,
-точные численные лимиты, способ хранения журнала и токена, стратегию больших
-архивов и механизм публикации Power-Up. Решения фиксируются по результатам
-проверок, а не выдаются за уже работающую поддержку.
+Before implementation, decide supported custom-field types, exact resource
+limits, journal/token storage, large-archive processing, and Power-Up hosting.
+Record decisions from actual validation rather than describing intended support
+as already implemented.

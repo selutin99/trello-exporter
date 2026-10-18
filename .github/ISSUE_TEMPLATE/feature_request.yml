@@ -1,0 +1,85 @@
+name: Feature request
+description: Suggest a new feature or an improvement to Trello Exporter
+title: '[Feature]: '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the request in terms of its value and expected outcome
+
+        Before submitting a request, make sure a similar issue does not already exist
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or developer need should this change address?
+      placeholder: It is currently difficult or impossible to ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the desired behavior and primary use case
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Trello Desktop integration
+        - Trello web Power-Up
+        - Authentication and permissions
+        - Snapshot export
+        - Restore
+        - Local files and archives
+        - Localization and resources
+        - Build and CI
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Usage example
+      description: If useful, add an interface, code, resource file, or user-flow example
+      render: text
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other options did you consider, and why are they unsuitable?
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List verifiable conditions that must be met to accept the result
+      placeholder: |
+        - [ ] The primary use case is implemented
+        - [ ] Tests are added or updated
+        - [ ] Documentation is updated
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add links, mockups, screenshots, or related issues
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checklist
+      options:
+        - label: I searched existing issues and found no duplicate
+          required: true

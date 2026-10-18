@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+coverage/
+.idea/
+.vscode/
+exports/
+backups/
+snapshots/
+import-reports/
+restore-jobs/
+tmp/
+package-lock.json

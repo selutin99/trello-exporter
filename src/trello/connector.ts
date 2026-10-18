@@ -10,25 +10,38 @@ try {
   const settings = runtimeSettings(window.location.href);
   const sdk = window.TrelloPowerUp;
   if (!sdk) throw new Error();
-  const openProbe = (frame: PowerUpFrame) => frame.modal({
-    title: translations[chooseLocale(frame.getContext().locale)].modalTitle,
-    // t.modal signs the URL itself, including the current Trello context.
-    url: probeUrl(window.location.href, settings), height: 640, fullscreen: false,
-  });
-  sdk.initialize({
-    'board-buttons': frame => [{
-      text: translations[chooseLocale(frame.getContext().locale)].boardButton,
-      icon: new URL(icon, window.location.href).href, callback: openProbe,
-    }],
-    'show-settings': openProbe,
-    'show-authorization': openProbe,
-    'authorization-status': async frame => {
-      if (!settings.clientId) return { authorized: false };
-      try { return { authorized: Boolean(await frame.getOAuth2ApiClient().getAccessToken()) }; }
-      catch { return { authorized: false }; }
+  const openProbe = (frame: PowerUpFrame) =>
+    frame.modal({
+      title: translations[chooseLocale(frame.getContext().locale)].modalTitle,
+      // t.modal signs the URL itself, including the current Trello context.
+      url: probeUrl(window.location.href, settings),
+      height: 640,
+      fullscreen: false,
+    });
+  sdk.initialize(
+    {
+      'board-buttons': (frame) => [
+        {
+          text: translations[chooseLocale(frame.getContext().locale)].boardButton,
+          icon: new URL(icon, window.location.href).href,
+          callback: openProbe,
+        },
+      ],
+      'show-settings': openProbe,
+      'show-authorization': openProbe,
+      'authorization-status': async (frame) => {
+        if (!settings.clientId) return { authorized: false };
+        try {
+          return { authorized: Boolean(await frame.getOAuth2ApiClient().getAccessToken()) };
+        } catch {
+          return { authorized: false };
+        }
+      },
     },
-  }, settings.oauthOptions);
+    settings.oauthOptions,
+  );
   if (status) status.textContent = translations[chooseLocale(navigator.language)].connectorReady;
 } catch {
-  if (status) status.textContent = translations[chooseLocale(navigator.language)].connectorUnavailable;
+  if (status)
+    status.textContent = translations[chooseLocale(navigator.language)].connectorUnavailable;
 }

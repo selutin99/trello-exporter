@@ -2,7 +2,7 @@ import type { ProbeController } from '../core';
 import { localizePage, translations } from '../i18n';
 import type { Locale } from '../i18n';
 
-/** Typed DOM boundary; an incompatible page fails at initialization. */
+/** Typed DOM boundary; an incompatible page fails at initialization */
 export class ProbeView {
   readonly language: HTMLSelectElement;
   readonly file: HTMLInputElement;
@@ -17,6 +17,11 @@ export class ProbeView {
   readonly #results: HTMLElement;
   readonly #standalone: HTMLElement;
 
+  /**
+   * Binds the diagnostic page controls with element type checks
+   * @param document - Document containing the probe markup
+   * @throws Error when a required control is missing or has the wrong element type
+   */
   constructor(private readonly document: Document) {
     this.language = element(document, 'language', 'select');
     this.file = element(document, 'file', 'input');
@@ -32,7 +37,21 @@ export class ProbeView {
     this.#standalone = element(document, 'standalone', 'p');
   }
 
-  render(locale: Locale, model: ProbeController, boardReference: string | null, sdkReady: boolean, apiReady: boolean): void {
+  /**
+   * Renders safe text and enables only the available operations
+   * @param locale - Selected interface language
+   * @param model - Diagnostic state and report source
+   * @param boardReference - Selected board reference or null
+   * @param sdkReady - Whether an SDK frame and public client ID are available
+   * @param apiReady - Whether a scoped API client is available
+   */
+  render(
+    locale: Locale,
+    model: ProbeController,
+    boardReference: string | null,
+    sdkReady: boolean,
+    apiReady: boolean,
+  ): void {
     localizePage(locale, this.document);
     this.language.value = locale;
     this.#scope.textContent = boardReference ?? translations[locale].missingScope;
@@ -49,7 +68,11 @@ export class ProbeView {
   }
 }
 
-function element<Tag extends keyof HTMLElementTagNameMap>(document: Document, id: string, tag: Tag): HTMLElementTagNameMap[Tag] {
+function element<Tag extends keyof HTMLElementTagNameMap>(
+  document: Document,
+  id: string,
+  tag: Tag,
+): HTMLElementTagNameMap[Tag] {
   const value = document.getElementById(id);
   if (!value || value.localName !== tag) throw new Error(`MISSING_ELEMENT_${id}`);
   return value as HTMLElementTagNameMap[Tag];

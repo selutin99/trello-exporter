@@ -1,4 +1,8 @@
+import { HttpMethod } from './types';
+import { ApiErrorCode } from '../shared/error-codes';
+import { serviceUrls } from '../config/services';
 import { ApiError } from './errors';
+import { pause, retryDelay } from './retry';
 import type { ClientOptions, RequestOptions } from './types';
 
 interface TransportOptions extends RequestOptions {
@@ -6,76 +10,107 @@ interface TransportOptions extends RequestOptions {
   body?: Record<string, string>;
 }
 
-/** Abortable backoff; cancellation clears its timer immediately. */
-export function pause(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    signal?.throwIfAborted();
-    const finish = () => { signal?.removeEventListener('abort', abort); resolve(); };
-    const timer = setTimeout(finish, ms);
-    const abort = () => { clearTimeout(timer); reject(signal?.reason); };
-    signal?.addEventListener('abort', abort, { once: true });
-  });
-}
-
-/** Internal transport. Callers use the board-scoped facade, never arbitrary endpoints. */
+/** Internal transport. Callers use the board-scoped facade, never arbitrary endpoints */
 export class Transport {
+  /**
+   * Creates internal transport with injectable browser boundaries
+   * @param options - Token provider, HTTP implementation, and retry timer
+   */
   constructor(private readonly options: ClientOptions) {}
 
-  async request(method: 'GET' | 'POST', path: string, options: TransportOptions = {}): Promise<unknown> {
-    const { signal, body, query = {} } = options;
-    const url = new URL(`https://api.trello.com/1${path}`);
-    for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
-    const attempts = method === 'GET' ? 3 : 1;
+  /**
+   * Reads JSON or performs one creating request without retrying uncertain writes
+   * @param method - HTTP method selected by the scoped client
+   * @param path - Fixed API path constructed by the scoped client
+   * @param options - Query fields, optional request body, and cancellation signal
+   * @returns Parsed response data for subsequent domain validation
+   * @throws ApiError for authentication, transport, status, or JSON failures; the signal reason on cancellation
+   */
+  async request(
+    method: HttpMethod,
+    path: string,
+    options: TransportOptions = {},
+  ): Promise<unknown> {
+    const url = new URL(`${serviceUrls.trelloApi}${path}`);
+    for (const [key, value] of Object.entries(options.query ?? {}))
+      url.searchParams.set(key, value);
+    const attempts = method === HttpMethod.Get ? 3 : 1;
     for (let attempt = 0; attempt < attempts; attempt++) {
-      signal?.throwIfAborted();
-      let token: string | null | undefined;
-      try { token = await this.options.getAccessToken(); }
-      catch { signal?.throwIfAborted(); throw new ApiError('AUTH_REQUIRED'); }
-      signal?.throwIfAborted();
-      if (typeof token !== 'string' || !token) throw new ApiError('AUTH_REQUIRED');
-      let response: Response;
-      try {
-        // Web APIs require their original receiver, not this Transport instance.
-        const fetchRequest = this.options.fetchImpl ?? fetch;
-        response = await fetchRequest(url.href, {
-          method, credentials: 'omit', redirect: 'error', cache: 'no-store',
-          headers: {
-            Accept: 'application/json', Authorization: `Bearer ${token}`,
-            ...(body ? { 'Content-Type': 'application/json' } : {}),
-          },
-          ...(body ? { body: JSON.stringify(body) } : {}),
-          ...(signal ? { signal } : {}),
-        });
-      } catch {
-        signal?.throwIfAborted();
-        throw new ApiError(method === 'GET' ? 'NETWORK_ERROR' : 'WRITE_RESULT_UNKNOWN');
-      }
-      signal?.throwIfAborted();
-      if (response.ok) {
-        try {
-          const result: unknown = await response.json();
-          signal?.throwIfAborted();
-          return result;
-        } catch {
-          signal?.throwIfAborted();
-          throw new ApiError(method === 'GET' ? 'INVALID_RESPONSE' : 'WRITE_RESULT_UNKNOWN');
-        }
-      }
-      if (method === 'GET' && [429, 502, 503, 504].includes(response.status) && attempt + 1 < attempts) {
-        const retry = response.headers.get('Retry-After');
-        let delay = 500 * (2 ** attempt);
-        if (retry) {
-          const seconds = Number(retry);
-          const requested = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(retry) - Date.now();
-          if (Number.isFinite(requested)) delay = Math.max(delay, requested);
-        }
-        if (delay > 10_000) throw new ApiError('RATE_LIMIT_WAIT', response.status);
-        await (this.options.pauseImpl ?? pause)(delay, signal);
-        continue;
-      }
-      throw new ApiError(method === 'POST' && response.status >= 500 ? 'WRITE_RESULT_UNKNOWN'
-        : response.status === 401 ? 'AUTH_REQUIRED' : 'API_REQUEST_FAILED', response.status);
+      const response = await this.#send(method, url, options);
+      options.signal?.throwIfAborted();
+      if (response.ok) return readJson(response, method, options.signal);
+      const canRetry =
+        method === HttpMethod.Get &&
+        [429, 502, 503, 504].includes(response.status) &&
+        attempt + 1 < attempts;
+      if (!canRetry) throw responseError(response.status, method);
+      await (this.options.pauseImpl ?? pause)(retryDelay(response, attempt), options.signal);
     }
-    throw new ApiError('API_REQUEST_FAILED');
+    throw new ApiError(ApiErrorCode.RequestFailed);
   }
+
+  async #token(signal?: AbortSignal): Promise<string> {
+    signal?.throwIfAborted();
+    let token: string | null | undefined;
+    try {
+      token = await this.options.getAccessToken();
+    } catch {
+      signal?.throwIfAborted();
+      throw new ApiError(ApiErrorCode.AuthRequired);
+    }
+    signal?.throwIfAborted();
+    if (typeof token !== 'string' || !token) throw new ApiError(ApiErrorCode.AuthRequired);
+    return token;
+  }
+
+  async #send(method: HttpMethod, url: URL, { body, signal }: TransportOptions): Promise<Response> {
+    const token = await this.#token(signal);
+    signal?.throwIfAborted();
+    try {
+      // Web APIs require their original receiver, not this Transport instance.
+      const fetchRequest = this.options.fetchImpl ?? fetch;
+      return await fetchRequest(url.href, {
+        method,
+        credentials: 'omit',
+        redirect: 'error',
+        cache: 'no-store',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+          ...(body ? { 'Content-Type': 'application/json' } : {}),
+        },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+        ...(signal ? { signal } : {}),
+      });
+    } catch {
+      signal?.throwIfAborted();
+      throw new ApiError(
+        method === HttpMethod.Get ? ApiErrorCode.NetworkError : ApiErrorCode.WriteResultUnknown,
+      );
+    }
+  }
+}
+
+async function readJson(
+  response: Response,
+  method: HttpMethod,
+  signal?: AbortSignal,
+): Promise<unknown> {
+  try {
+    const value: unknown = await response.json();
+    signal?.throwIfAborted();
+    return value;
+  } catch {
+    signal?.throwIfAborted();
+    throw new ApiError(
+      method === HttpMethod.Get ? ApiErrorCode.InvalidResponse : ApiErrorCode.WriteResultUnknown,
+    );
+  }
+}
+
+function responseError(status: number, method: HttpMethod): ApiError {
+  if (method === HttpMethod.Post && status >= 500)
+    return new ApiError(ApiErrorCode.WriteResultUnknown, status);
+  if (status === 401) return new ApiError(ApiErrorCode.AuthRequired, status);
+  return new ApiError(ApiErrorCode.RequestFailed, status);
 }

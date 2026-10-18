@@ -1,5 +1,8 @@
-/** The official SDK surface used here. No token storage or OAuth protocol is reimplemented. */
-export interface OAuthOptions { clientId?: string; redirectUri?: string }
+/** The official SDK surface used here. No token storage or OAuth protocol is reimplemented */
+export interface OAuthOptions {
+  clientId?: string;
+  redirectUri?: string;
+}
 export interface OAuthClient {
   getAccessToken(): Promise<string | null | undefined>;
   authorize(options: { scopes: string[] }): Promise<unknown>;
@@ -9,10 +12,17 @@ export interface PowerUpFrame {
   getContext(): { board?: string; locale?: string };
   getOAuth2ApiClient(): OAuthClient;
   render(callback: () => void): void;
-  modal(options: { title: string; url: string; height: number; fullscreen: boolean }): Promise<unknown>;
+  modal(options: {
+    title: string;
+    url: string;
+    height: number;
+    fullscreen: boolean;
+  }): Promise<unknown>;
 }
 export interface PowerUpCapabilities {
-  'board-buttons': (frame: PowerUpFrame) => { text: string; icon: string; callback: (frame: PowerUpFrame) => Promise<unknown> }[];
+  'board-buttons': (
+    frame: PowerUpFrame,
+  ) => { text: string; icon: string; callback: (frame: PowerUpFrame) => Promise<unknown> }[];
   'show-settings': (frame: PowerUpFrame) => Promise<unknown>;
   'show-authorization': (frame: PowerUpFrame) => Promise<unknown>;
   'authorization-status': (frame: PowerUpFrame) => Promise<{ authorized: boolean }>;
@@ -23,12 +33,20 @@ export interface PowerUpSdk {
 }
 
 declare global {
-  interface Window { TrelloPowerUp?: PowerUpSdk }
+  interface Window {
+    TrelloPowerUp?: PowerUpSdk;
+  }
 }
 
-/** Both the module graph and the deferred official SDK must be ready. */
+/**
+ * Waits until deferred SDK scripts and the document have loaded
+ * @param window - Window hosting the official SDK script
+ * @returns A promise resolved when SDK initialization can be attempted
+ */
 export async function pageReady(window: Window): Promise<void> {
   if (window.document.readyState !== 'complete') {
-    await new Promise<void>(resolve => window.addEventListener('load', () => resolve(), { once: true }));
+    await new Promise<void>((resolve) =>
+      window.addEventListener('load', () => resolve(), { once: true }),
+    );
   }
 }

@@ -6,7 +6,7 @@
   "description": "Portable Trello board snapshots; initial API and desktop compatibility prototype.",
   "license": "MIT",
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": "^20.19.0 || ^22.13.0 || >=24"
   },
   "scripts": {
     "test": "vitest run",
@@ -15,12 +15,26 @@
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm test && npm run build"
+    "check": "npm run typecheck && npm run lint && npm run lint:styles && npm run lint:smells && npm run format:check && npm run test:coverage && npm run build",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "npm run lint -- --fix",
+    "lint:styles": "eslint \"src/**/*.css\" --max-warnings 0",
+    "lint:smells": "eslint . --config eslint.smells.config.mjs --max-warnings 0",
+    "format:check": "prettier . --check",
+    "format": "prettier . --write",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
+    "@eslint/css": "2.0.1",
+    "@eslint/js": "10.0.1",
     "@types/node": "20.19.43",
+    "@vitest/coverage-v8": "4.1.12",
+    "eslint": "10.13.0",
+    "eslint-plugin-sonarjs": "4.2.2",
     "happy-dom": "21.0.3",
-    "typescript": "7.0.2",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.2",
     "vite": "8.3.4",
     "vitest": "4.1.12"
   }

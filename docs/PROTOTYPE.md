@@ -1,25 +1,27 @@
-# Технический прототип
+# Compatibility prototype
 
-Это проверка совместимости перед основным MVP. Экспорт снимков, ZIP-упаковка,
-полное восстановление и нагрузочная проверка Trello API пока не реализованы.
+This is a compatibility check before the main MVP. Snapshot export, ZIP packaging,
+full restoration, and Trello API workload validation are not implemented yet.
 
-## Что есть
+## Implemented checks
 
-- Power-Up-коннектор, модальное окно диагностики и callback авторизации.
-- Русский и английский интерфейсы с одинаковым набором ключей переводов.
-- Скачивание синтетического JSON, выбор локального файла и чтение его потоком.
-- OAuth 2.0 через официальный Power-Up SDK, без собственного client secret.
-- Проверка метаданных одной явно выбранной доски через REST API.
-- Клиент с ограничением на доску и дочерние списки. Создающие методы проверены
-  на подставном транспорте; в подключаемом интерфейсе запись отключена.
-- Повторы ограниченных читающих запросов; неизвестный результат POST не повторяется.
-- Отмена освобождает интерфейс даже при зависшем ожидании SDK. Она прекращает
-  локальную проверку, но не отзывает разрешение, уже принятое в окне OAuth.
+- Power-Up connector, diagnostic modal, and authorization callback
+- Russian and English product interfaces with matching translation keys
+- Synthetic JSON download, local file selection, and streaming reads
+- OAuth 2.0 through the official Power-Up SDK without a project client secret
+- REST metadata reads for one explicitly configured board
+- A scoped client validating board and list ownership; creating methods are tested
+  with synthetic HTTP responses and remain disabled in the connected interface
+- Bounded read retries; an uncertain POST is never automatically retried
+- Cancellation that releases the UI even if the SDK never settles; it does not
+  revoke an OAuth grant already accepted in another window
 
-Модульные проверки и живые результаты учитываются отдельно. Подтверждённые
-операции перечислены ниже; они не заменяют проверку полного экспорта и восстановления.
+Offline checks and live results are recorded separately. Neither establishes a
+working full export/restore cycle.
 
-## Локальный запуск
+## Local development
+
+Use Node.js 24 or a compatible runtime: 20.19+ / 22.13+.
 
 ```sh
 npm ci
@@ -27,127 +29,107 @@ npm run check
 npm run dev
 ```
 
-Сервер Vite слушает только `127.0.0.1:4173`. Страница проверки:
-`http://127.0.0.1:4173/trello-exporter/pages/probe.html`. Исходный код находится в `src/`;
-структура описана в [архитектуре](ARCHITECTURE.md). Это один npm-проект без workspaces.
-Нужен Node.js 24 либо совместимый runtime 20.19+ / 22.12+.
-В отдельной вкладке доступны проверки
-локальных файлов; авторизация доступна только внутри зарегистрированного Power-Up.
+Vite listens only on `127.0.0.1:4173`. Open
+`http://127.0.0.1:4173/trello-exporter/pages/probe.html`. Source modules live under
+`src/` in a single npm project without workspaces; see [architecture](ARCHITECTURE.md).
+Standalone mode supports local files; SDK authorization requires opening the
+registered Power-Up inside Trello.
 
-`npm run check` проверяет типы, выполняет тесты и собирает `dist/`.
-`npm run preview` показывает собранную версию по адресу
+`npm run check` performs type, lint, formatting, smell, coverage, and build checks.
+`npm run preview` serves the production build at
 `http://127.0.0.1:4173/trello-exporter/probe.html`.
-GitHub Pages публикуется workflow из `dist/`, а не из каталога исходников.
 
-## Регистрация Power-Up
+GitHub Pages is disabled at the user's request. CI does not publish a website.
+The former Pages connector and callback URLs are unavailable; further live
+checks require a separate HTTPS host and matching registered URLs.
 
-1. Подготовить HTTPS-хостинг результата `npm run build` из `dist/`.
-2. Создать отдельный бесплатный тестовый Workspace. Поместить в него только
-   явно выбранную тестовую доску, сохранив её приватность. В портале Trello
-   создать приложение с возможностями Power-Up в этом Workspace.
-   Указать поддержку через GitHub Issues.
-3. В URL коннектора использовать `/trello-exporter/connector.html?board=<SHORT_LINK>`
-   на GitHub Pages этого проекта (путь сайта зависит от хостинга).
-   Реальный shortLink указывается в настройках приложения и не коммитится.
-4. Настроить public OAuth 2.0 client; SDK обслуживает авторизацию и обновление
-   токенов. Публичный client ID добавить в URL коннектора параметром `clientId`.
-5. Зарегистрировать точный callback URL вида
-   `/trello-exporter/authorize.html?clientId=<PUBLIC_CLIENT_ID>` на том же HTTPS-хосте.
-6. Включить Power-Up только на указанной тестовой доске.
-7. Показать пользователю экран согласия перед выдачей доступа.
+## Registering a test Power-Up
 
-В разделе Privacy нужно указать `/trello-exporter/privacy.html` и зарегистрировать
-фактический режим обработки данных. Текущий прототип не ведёт внешнюю базу
-профилей Trello и не запрашивает их. Эта декларация требует повторной оценки
-при реализации полного экспорта: её нельзя автоматически переносить на MVP.
+1. Prepare an HTTPS host for the `dist/` output of `npm run build`.
+2. Create an isolated test Workspace containing only the explicitly approved
+   private test board. Register a Power-Up application for that Workspace and
+   link support to this repository's GitHub Issues.
+3. Configure a connector URL ending in
+   `/trello-exporter/connector.html?board=<SHORT_LINK>`; adapt the base path to the
+   host. Keep actual board references out of committed configuration and fixtures.
+4. Configure a public OAuth 2.0 client using the official SDK flow and add its
+   public `clientId` to the connector URL.
+5. Register the exact same-origin callback URL, for example
+   `/trello-exporter/authorize.html?clientId=<PUBLIC_CLIENT_ID>`.
+6. Enable the Power-Up only on the designated test board.
+7. Show the consent screen and obtain approval for the actual requested scope.
 
-У уже подключённого Power-Up сохраняются прежние `/trello-exporter/prototype/*.html`.
-Сборка создаёт там копии готовых HTML с абсолютными ссылками на ресурсы, без
-перенаправления. Исходного каталога `prototype/` больше нет. Менять точный
-зарегистрированный callback и заново выдавать OAuth-доступ ради рефакторинга не нужно.
+Use the hosted `privacy.html` as the data-handling notice and declare actual
+storage behavior. The current prototype does not request member profiles or
+operate an external profile database. Reassess the declaration for full exports.
+The build retains `/prototype/*.html` aliases for compatible hosts without
+redirecting OAuth callbacks; no `prototype/` source directory remains.
 
-Для Power-Up OAuth 2.0 Trello автоматически включает `read:board:trello`
-и `write:board:trello`; разрешение ограничено Workspace, а не одной доской.
-Нельзя называть его доступом «только к одной доске» или «только на чтение».
-Программная проверка ID дополнительно ограничивает действия нашего прототипа,
-но не меняет объём выданного Trello разрешения. Другие scopes не запрашиваются.
-В текущем интерфейсе доступны только чтение метаданных и локальные файлы.
-Для живых проверок использовать отдельный тестовый Workspace: ограничение
-ID в коде не заменяет изоляцию прав OAuth. На экране согласия сверять название
-Workspace и число досок. Не выдавать доступ к рабочему пространству с личными
-досками ради проверки прототипа.
+Power-Up OAuth 2.0 includes `read:board:trello` and `write:board:trello` within an
+authorized Workspace. It must not be described as read-only or limited to one
+board. Code-level identity checks further restrict our actions but do not reduce
+the granted permission. No other scopes are requested. Verify the Workspace name
+and board count before consenting, using an isolated test Workspace rather than
+one containing personal boards.
 
-## Результаты живой проверки, 18 октября 2026
+## Live results recorded on October 18, 2026
 
-| Проверка | Chrome | Trello Desktop macOS |
-| --- | --- | --- |
-| Отдельная страница диагностики | Открывается | Не применяется |
-| Кнопка Power-Up и модальное окно на тестовой доске | Открываются | Открываются |
-| Скачивание синтетического JSON | Файл скачан и проверен | Файл скачан и проверен |
-| Выбор и потоковое чтение локального файла 200 МиБ | Прочитаны 209 715 200 байт | Прочитаны 209 715 200 байт |
-| RU/EN | Переключаются на отдельной странице | Переключаются внутри Power-Up |
-| OAuth и чтение через REST API | Штатный OAuth завершён; метаданные выбранной доски прочитаны | Метаданные той же доски прочитаны с авторизацией, сохранённой после входа в Chrome |
-| Отмена зависшего ожидания OAuth | Проверена модульно | Ожидание отменено; интерфейс снова доступен |
+These results were obtained before the former Pages deployment was removed.
 
-Среда: macOS 15.3, Trello Desktop 2.16.1, запущенный Chrome 155.0.8059.40
-(arm64). Номер Chrome прочитан на `chrome://version`; установленный на диске
-пакет уже имел другой номер и не использовался как версия запущенного браузера.
+| Check                             | Chrome                                                | Trello Desktop on macOS                                                     |
+| --------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------- |
+| Standalone diagnostic page        | Opens                                                 | Not applicable                                                              |
+| Power-Up board button and modal   | Open                                                  | Open                                                                        |
+| Synthetic JSON download           | Saved and checked                                     | Saved and checked                                                           |
+| Selected synthetic 200 MiB stream | Read 209,715,200 bytes                                | Read 209,715,200 bytes                                                      |
+| RU/EN                             | Switches on standalone page                           | Switches inside Power-Up                                                    |
+| OAuth and REST read               | Official flow completed; selected board metadata read | Same board metadata read using SDK authorization saved after Chrome consent |
+| Cancelling stalled OAuth          | Covered offline                                       | Waiting cancelled and controls released                                     |
 
-### Первичное подключение Desktop
+Environment: macOS 15.3, Trello Desktop 2.16.1, running Chrome 155.0.8059.40
+(arm64). Chrome's version came from `chrome://version`; the on-disk package had a
+different pending-update version and was not used as the running version.
 
-1. Открыть ту же тестовую доску в Chrome, включить Power-Up и пройти OAuth.
-2. На экране согласия проверить изолированный тестовый Workspace.
-3. Вернуться в Trello Desktop, обновить тестовую доску и открыть Power-Up.
-4. Нажать чтение метаданных. Новый вход в Desktop для этого не потребовался.
+### Tested initial Desktop connection
 
-Прямой старт OAuth из установленного Desktop сейчас не считается рабочим:
-его callback открылся отдельной вкладкой Chrome без `window.opener`, и
-диагностика показала `CALLBACK_OPENER_UNAVAILABLE`. Это подтверждённое ограничение
-текущего сценария, а не доказательство невозможности нативного возврата в будущем.
-Авторизация обслуживается официальным SDK; коды и токены вручную между клиентами
-не переносились. Проверен повторный доступ из Desktop, но не обновление
-истёкшего токена или истечение refresh token.
+1. Open the same designated board in Chrome and complete the Power-Up OAuth flow.
+2. Verify the isolated test Workspace on the consent screen.
+3. Return to Desktop, refresh that test board, and reopen the Power-Up.
+4. Request metadata; another Desktop sign-in was not required.
 
-### Особенность автоматизированной проверки Chrome
+Direct OAuth initiated in Desktop is not yet a supported path: its callback
+opened in a separate Chrome tab without `window.opener`, producing
+`CALLBACK_OPENER_UNAVAILABLE`. This is an observed limitation, not proof that a
+future native return path is impossible. Codes and tokens were not manually
+transferred between clients. Expired access/refresh token behavior was not tested.
 
-При подключённом браузерном отладчике тестового инструмента iframe зависали
-до отправки сетевого запроса; таймаут был и у встроенного Butler. После
-отключения этого подключения уже ожидающее модальное окно загрузилось.
-Затем кнопку, OAuth и REST API проверили через обычный интерфейс Chrome,
-без подключения этого отладчика. Настройки безопасности Chrome не менялись.
-При повторении теста не выдавать этот симптом за доказанный сбой Power-Up.
+### Automation-specific Chrome behavior
 
-Отдельная страница в Chrome не доказывает работу Power-Up внутри iframe.
-Проверены локальные файловые операции, а не экспорт вложений из Trello.
-В рабочем интерфейсе записи API отключены; тестовая доска остаётся пустой.
-Снимки экранов, скачанные отчёты и реальные идентификаторы в репозиторий не входят.
+With the test tool's browser debugger attached, iframes stalled before issuing a
+network request; the built-in Butler also timed out. Disconnecting that debugger
+allowed the already-pending modal to load. The button, OAuth flow, and REST read
+then passed through ordinary Chrome UI. Browser security settings were unchanged.
+Do not interpret that automation symptom as a proven Power-Up failure.
 
-## Границы живых проверок
+## Live-test boundaries and outstanding work
 
-Источник — только доска, которую явно указал пользователь. Запросы списка
-досок аккаунта/Workspace не нужны и не выполняются. Посторонние карточки,
-доски и настройки не используются даже как данные для отрицательных тестов:
-для таких проверок служат синтетические ID и подставной транспорт.
+Use only the board explicitly designated by the user. Do not enumerate account
+or Workspace boards, or read/change unrelated cards, settings, or Power-Ups.
+Negative ownership checks use synthetic IDs and a stub transport. Future restores
+create a new private board and record its ID in that operation's journal; existing
+boards do not become restore targets. No deletion operation is provided.
 
-Дальнейшее восстановление создаёт новую приватную доску и отдельно фиксирует
-её ID в журнале операции. Существующие доски не становятся целями восстановления.
-Операции удаления не предусмотрены в прототипе.
+Repeat button/modal, consent/return, actual JSON download, local file selection,
+200 MiB streaming, RU/EN, cancellation, and error handling in both required
+clients when hosting changes. Browser standalone success does not prove iframe
+or Desktop behavior. Local file checks do not validate downloading Trello
+attachments, building full ZIP archives, restoration, or the required API workload.
+The live interface kept writes disabled and the test board empty. Screenshots,
+downloaded reports, and actual runtime IDs stay out of the repository.
 
-## Что нужно проверить в браузере и Trello Desktop отдельно
+## References
 
-1. Открытие кнопки и модального окна Power-Up.
-2. Согласие OAuth, возврат в приложение и чтение выбранной доски.
-3. Фактическое появление скачанного JSON на диске и повторный выбор этого файла.
-4. Локальное потоковое чтение синтетического файла 200 МиБ без загрузки на сервер.
-5. Переключение RU/EN, отмену и сообщения об ошибках.
-
-Скачивание маленького JSON и чтение большого файла не заменяют будущую проверку
-полного ZIP-цикла на 200 МиБ и восстановления через API. Эти результаты
-фиксируются раздельно.
-
-## Источники
-
-- [OAuth 2.0 для Trello](https://developer.atlassian.com/cloud/trello/guides/rest-api/oauth-2-getting-started/)
-- [Настройка OAuth-клиента и ограничения Workspace](https://developer.atlassian.com/cloud/trello/guides/rest-api/oauth-2-client-configuration/)
-- [OAuth 2.0 API Client Power-Up SDK](https://developer.atlassian.com/cloud/trello/power-ups/oauth-2-api-client/)
-- [Модальное окно Power-Up](https://developer.atlassian.com/cloud/trello/power-ups/ui-functions/modal/)
+- [Trello OAuth 2.0](https://developer.atlassian.com/cloud/trello/guides/rest-api/oauth-2-getting-started/)
+- [OAuth client configuration and Workspace scope](https://developer.atlassian.com/cloud/trello/guides/rest-api/oauth-2-client-configuration/)
+- [Power-Up OAuth 2.0 client](https://developer.atlassian.com/cloud/trello/power-ups/oauth-2-api-client/)
+- [Power-Up modal](https://developer.atlassian.com/cloud/trello/power-ups/ui-functions/modal/)

@@ -1,16 +1,26 @@
 import { en } from './locales/en';
 import { ru } from './locales/ru';
-import type { Locale, MessageKey, Messages } from './types';
+import { Locale, type MessageKey, type Messages } from './types';
 
 export const translations: Record<Locale, Messages> = { en, ru };
-export type { Locale, MessageKey, Messages } from './types';
+export { Locale, type MessageKey, type Messages } from './types';
 
-/** Russian variants use Russian; all other or missing language tags fall back to English. */
+/**
+ * Selects Russian variants and falls back to English for all other language tags
+ * @param value - Language preference or Trello locale
+ * @returns The supported interface locale
+ */
 export function chooseLocale(value: unknown): Locale {
-  return typeof value === 'string' && value.toLowerCase().startsWith('ru') ? 'ru' : 'en';
+  return typeof value === 'string' && value.toLowerCase().startsWith('ru')
+    ? Locale.Russian
+    : Locale.English;
 }
 
-/** Renders translations as plain text, never interpreted markup. */
+/**
+ * Renders locale messages as plain text instead of interpreted markup
+ * @param locale - Supported interface language
+ * @param document - Document containing data-i18n message targets
+ */
 export function localizePage(locale: Locale, document: Document): void {
   const strings = translations[locale];
   document.documentElement.lang = locale;

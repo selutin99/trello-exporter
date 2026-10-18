@@ -1,3 +1,8 @@
+export enum HttpMethod {
+  Get = 'GET',
+  Post = 'POST',
+}
+
 export interface BoardSummary {
   id: string;
   shortLink: string;
@@ -23,7 +28,7 @@ export interface RequestOptions {
   signal?: AbortSignal | undefined;
 }
 
-/** Injectable Web API boundaries, shared by browser runtime and offline tests. */
+/** Injectable Web API boundaries, shared by browser runtime and offline tests */
 export interface ClientOptions {
   boardReference: string;
   getAccessToken: () => Promise<string | null | undefined>;

@@ -1,57 +1,57 @@
-# Исследование рынка и технические источники
+# Market research and technical references
 
-Дата проверки: 18 октября 2026 года. Сравнение основано на документации
-разработчиков; практический экспорт и восстановление не проводились.
+Research date: October 18, 2026. This comparison is based on vendor documentation;
+these products were not used for a practical export/restore comparison.
 
-## Близкие решения
+## Related products
 
-| Продукт | Что уже есть | Отличие от целевого сценария |
-| --- | --- | --- |
-| [Встроенный экспорт Trello](https://support.atlassian.com/trello/docs/exporting-data-from-trello/) | JSON, CSV для Premium; экспорт Workspace может включать файлы | Встроенного воссоздания доски из JSON/CSV нет |
-| [Board Export](https://docs.adaptavist.com/be/latest/welcome/) | Excel, CSV, PDF, PNG | Обратная загрузка не заявлена; состав данных зависит от формата |
-| [TrelloExport](https://github.com/trapias/TrelloExport) | Открытое расширение Chrome: Excel, CSV, Markdown, HTML, OPML | Восстановление доски не заявлено |
-| [Blue Cat Exports](https://www.bluecatreports.com/exports/) / [Imports](https://www.bluecatreports.com/imports/) | CSV-экспорт и импорт CSV/XLSX с сопоставлением полей | Документирован импорт карточек; полнота восстановления всей доски не подтверждена |
-| [Board Export Lite](https://www.trello-plugins.com/board-export-lite) | Снимок JSON/CSV/XLSX вручную и по расписанию | Восстановления нет; вложения и комментарии не входят в подтверждённую модель |
-| [Kanban Importer](https://njligames.com/help/kanban-importer/migrating-from-jira-github-trello) | Воссоздание содержимого из JSON Trello | Пропускает архивные карточки, пользовательские поля, файлы вложений, комментарии сверх первого и другие данные |
-| [BackupLABS](https://backuplabs.io/integrations/trello-backup/) | Снимки, скачивание ZIP, восстановление новой доски | Документация описывает восстановление из хранилища сервиса; импорт произвольного архива не подтверждён |
-| [ProBackup](https://support.probackup.io/en/articles/9292103-how-to-restore-trello-data) | Восстановление новой доски, карточек, файлов и комментариев | Восстановление из резервных копий сервиса; автоматизации и представления не переносятся |
-| [Rewind](https://rewind.com/products/backups/trello/) | Ежедневные снимки и восстановление доски на дату | [Справка об ограничениях](https://help.rewind.com/hc/en-us/articles/28785780290203-What-Does-Rewind-Backup-For-Trello) отдельно указывает, что комментарии сохраняются, но не восстанавливаются |
+| Product                                                                                                          | Documented capabilities                                        | Difference from the target workflow                                                                                                                              |
+| ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Built-in Trello export](https://support.atlassian.com/trello/docs/exporting-data-from-trello/)                  | JSON, Premium CSV; Workspace exports can include files         | No built-in reconstruction of a board from JSON/CSV                                                                                                              |
+| [Board Export](https://docs.adaptavist.com/be/latest/welcome/)                                                   | Excel, CSV, PDF, PNG                                           | Reverse import is not advertised; included data depends on the format                                                                                            |
+| [TrelloExport](https://github.com/trapias/TrelloExport)                                                          | Open-source Chrome extension: Excel, CSV, Markdown, HTML, OPML | Board restoration is not advertised                                                                                                                              |
+| [Blue Cat Exports](https://www.bluecatreports.com/exports/) / [Imports](https://www.bluecatreports.com/imports/) | CSV export and CSV/XLSX import with field mapping              | Card import is documented; complete board restoration is unverified                                                                                              |
+| [Board Export Lite](https://www.trello-plugins.com/board-export-lite)                                            | Manual and scheduled JSON/CSV/XLSX snapshots                   | No restoration; attachments and comments are outside the verified model                                                                                          |
+| [Kanban Importer](https://njligames.com/help/kanban-importer/migrating-from-jira-github-trello)                  | Recreates content from Trello JSON                             | Skips archived cards, custom fields, attachment files, comments beyond the first, and other data                                                                 |
+| [BackupLABS](https://backuplabs.io/integrations/trello-backup/)                                                  | Snapshots, ZIP downloads, restoration to a new board           | Restoration is documented from service storage; arbitrary archive import is unverified                                                                           |
+| [ProBackup](https://support.probackup.io/en/articles/9292103-how-to-restore-trello-data)                         | Restores a new board, cards, files, and comments               | Uses service backups; automations and views are not transferred                                                                                                  |
+| [Rewind](https://rewind.com/products/backups/trello/)                                                            | Daily snapshots and restoration to a selected date             | Its [limitations page](https://help.rewind.com/hc/en-us/articles/28785780290203-What-Does-Rewind-Backup-For-Trello) says comments are backed up but not restored |
 
-## Вывод для проекта
+## Project hypothesis
 
-Снимки текущего состояния и восстановление уже существуют. Гипотеза отличия
-проекта — открытый переносимый JSON/ZIP с файлами, локальный просмотр,
-предпросмотр восстановления и явный отчёт о потерях. Это продуктовая гипотеза,
-а не утверждение об отсутствии конкурентов или подтверждённом спросе.
+Current-state snapshots and restoration already exist. The proposed distinction
+is an open, portable JSON/ZIP format with files, local inspection, a restore
+preview, and an explicit loss report. This is a product hypothesis, not a claim
+that competitors do not exist or demand has been proven.
 
-Первые кандидаты для практического сравнения: BackupLABS и связка встроенного
-JSON Trello с Kanban Importer. Сравнивать нужно восстановленные данные на одной
-синтетической доске, включая архив, комментарии, файлы, поля и совпадающие имена.
+Initial practical comparison candidates are BackupLABS and built-in Trello JSON
+combined with Kanban Importer. Compare restored content using one synthetic
+board, including archived data, comments, files, fields, and duplicate names.
 
-## Технические источники
+## Technical references
 
 - [Trello REST API: Boards](https://developer.atlassian.com/cloud/trello/rest/api-group-boards/)
 - [Trello REST API: Cards](https://developer.atlassian.com/cloud/trello/rest/api-group-cards/)
-- [Лимиты запросов Trello](https://developer.atlassian.com/cloud/trello/guides/rest-api/rate-limits/)
-- [Создание Power-Up](https://developer.atlassian.com/cloud/trello/guides/power-ups/your-first-power-up/)
-- [Как устроен JSON-экспорт Trello](https://support.atlassian.com/trello/docs/making-sense-of-trellos-json-export/)
-- [Состав экспортов Board Export](https://docs.adaptavist.com/be/latest/data-included-with-exports/)
-- [Trello Desktop для macOS и Windows](https://support.atlassian.com/trello/docs/trello-desktop-apps/)
-- [Power-Up Client Library: интерфейсы внутри Trello](https://developer.atlassian.com/cloud/trello/power-ups/client-library/)
-- [Локализация Power-Up](https://developer.atlassian.com/cloud/trello/power-ups/client-library/localization/)
-- [Locale в контексте Power-Up](https://developer.atlassian.com/cloud/trello/power-ups/client-library/t-getcontext/)
+- [Trello rate limits](https://developer.atlassian.com/cloud/trello/guides/rest-api/rate-limits/)
+- [Creating a Power-Up](https://developer.atlassian.com/cloud/trello/guides/power-ups/your-first-power-up/)
+- [Understanding Trello JSON exports](https://support.atlassian.com/trello/docs/making-sense-of-trellos-json-export/)
+- [Data included in Board Export](https://docs.adaptavist.com/be/latest/data-included-with-exports/)
+- [Trello Desktop for macOS and Windows](https://support.atlassian.com/trello/docs/trello-desktop-apps/)
+- [Power-Up client library](https://developer.atlassian.com/cloud/trello/power-ups/client-library/)
+- [Power-Up localization](https://developer.atlassian.com/cloud/trello/power-ups/client-library/localization/)
+- [Locale in the SDK context](https://developer.atlassian.com/cloud/trello/power-ups/client-library/t-getcontext/)
 
-## Проверка desktop и локализации
+## Desktop and localization validation
 
-Платформенный SDK предоставляет интерфейсы Power-Up внутри Trello и средства
-локализации. Совместимость конкретного пути авторизации, выбора и сохранения
-файлов с установленным Trello Desktop должна подтверждаться прототипом.
-Работа в браузере не заменяет такой проверки.
+The platform SDK provides in-Trello Power-Up interfaces and localization tools.
+The chosen authorization, file selection, and saving paths must still be tested
+in the installed Trello Desktop client. Browser success does not establish
+Desktop compatibility.
 
-Например, [TRELLO-1706](https://jira.atlassian.com/browse/TRELLO-1706) описывает
-проблему открытия стороннего Power-Up в Windows-клиенте; на дату исследования
-она отмечена как исправленная. Это основание включить desktop в матрицу
-проверок, а не утверждение о текущей неработоспособности Power-Up.
+For example, [TRELLO-1706](https://jira.atlassian.com/browse/TRELLO-1706) describes a
+third-party Power-Up opening issue in the Windows client, marked fixed when the
+research was conducted. This supports including Desktop in the test matrix; it
+does not establish a current Power-Up failure.
 
-Перед реализацией нужно проверить фактическое поведение API и авторизации.
-Сведения о конкурентах не заменяют технический контракт и могут измениться.
+Verify actual API and authorization behavior before implementation. Competitor
+information is not a technical contract and can change over time.
