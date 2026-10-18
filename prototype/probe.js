@@ -125,6 +125,9 @@ $('inspect').addEventListener('click', () => run('inspected', async signal => {
 }));
 
 render();
+if (document.readyState !== 'complete') {
+  await new Promise(resolve => window.addEventListener('load', resolve, { once: true }));
+}
 if (window.TrelloPowerUp && window.parent !== window) {
   t = window.TrelloPowerUp.iframe(settings.oauthOptions);
   t.render(() => {

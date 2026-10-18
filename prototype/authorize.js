@@ -5,6 +5,9 @@ const locale = chooseLocale(navigator.language);
 document.documentElement.lang = locale;
 const status = document.getElementById('authorization-status');
 status.textContent = translations[locale].callback;
+if (document.readyState !== 'complete') {
+  await new Promise(resolve => window.addEventListener('load', resolve, { once: true }));
+}
 try {
   const settings = runtimeSettings(window.location.href);
   if (!settings.clientId || !window.TrelloPowerUp) throw new Error();

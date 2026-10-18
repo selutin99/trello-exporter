@@ -1,6 +1,10 @@
 import { runtimeSettings } from './runtime.js';
 import { chooseLocale } from './i18n.js';
 
+// Both the SDK script and the module graph must be ready before initialization.
+if (document.readyState !== 'complete') {
+  await new Promise(resolve => window.addEventListener('load', resolve, { once: true }));
+}
 const settings = runtimeSettings(window.location.href);
 const openProbe = (t) => {
   const url = new URL('./probe.html', window.location.href);
@@ -12,6 +16,9 @@ const openProbe = (t) => {
   });
 };
 
+if (!window.TrelloPowerUp) {
+  document.getElementById('connector-status').textContent = 'SDK_UNAVAILABLE';
+} else {
 window.TrelloPowerUp.initialize({
   'board-buttons': (t) => [{
     text: chooseLocale(t.getContext().locale) === 'ru' ? 'Проверка экспорта' : 'Export probe',
@@ -26,3 +33,5 @@ window.TrelloPowerUp.initialize({
     catch { return { authorized: false }; }
   },
 }, settings.oauthOptions);
+document.getElementById('connector-status').textContent = 'Connector initialized';
+}
