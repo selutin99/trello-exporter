@@ -36,6 +36,22 @@ JSON Trello с Kanban Importer. Сравнивать нужно восстано
 - [Создание Power-Up](https://developer.atlassian.com/cloud/trello/guides/power-ups/your-first-power-up/)
 - [Как устроен JSON-экспорт Trello](https://support.atlassian.com/trello/docs/making-sense-of-trellos-json-export/)
 - [Состав экспортов Board Export](https://docs.adaptavist.com/be/latest/data-included-with-exports/)
+- [Trello Desktop для macOS и Windows](https://support.atlassian.com/trello/docs/trello-desktop-apps/)
+- [Power-Up Client Library: интерфейсы внутри Trello](https://developer.atlassian.com/cloud/trello/power-ups/client-library/)
+- [Локализация Power-Up](https://developer.atlassian.com/cloud/trello/power-ups/client-library/localization/)
+- [Locale в контексте Power-Up](https://developer.atlassian.com/cloud/trello/power-ups/client-library/t-getcontext/)
+
+## Проверка desktop и локализации
+
+Платформенный SDK предоставляет интерфейсы Power-Up внутри Trello и средства
+локализации. Совместимость конкретного пути авторизации, выбора и сохранения
+файлов с установленным Trello Desktop должна подтверждаться прототипом.
+Работа в браузере не заменяет такой проверки.
+
+Например, [TRELLO-1706](https://jira.atlassian.com/browse/TRELLO-1706) описывает
+проблему открытия стороннего Power-Up в Windows-клиенте; на дату исследования
+она отмечена как исправленная. Это основание включить desktop в матрицу
+проверок, а не утверждение о текущей неработоспособности Power-Up.
 
 Перед реализацией нужно проверить фактическое поведение API и авторизации.
 Сведения о конкурентах не заменяют технический контракт и могут измениться.

@@ -21,6 +21,21 @@ formats for analysis, reading, and sharing.
 The project targets the board's current content. Activity history, scheduled
 backups, and synchronization are outside the initial release.
 
+## MVP requirements
+
+- A Trello Power-Up usable inside Trello Desktop on macOS and Trello on the web
+  in Chrome. Desktop authorization, file selection, and downloads must be tested
+  directly in the installed client.
+- Russian and English interfaces from the first release.
+- JSON/ZIP export and restore, with an acceptance workload of 100 cards,
+  2,000 checklist items, and 200 MiB of attachment files. One card in that workload
+  has at least 600 items across multiple checklists.
+- Processing on the user's device is preferred. Desktop support does not itself
+  require uploading board data to a project-operated server.
+
+These are requirements awaiting implementation and validation. Windows Desktop
+and other browsers require separate compatibility checks before support is claimed.
+
 ## Documentation
 
 The initial design documents are in Russian:
