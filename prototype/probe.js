@@ -1,6 +1,7 @@
 import { TestBoardApi } from './api.js';
 import { chooseLocale, localizePage, translations } from './i18n.js';
 import { runtimeSettings } from './runtime.js';
+import { waitForOperation } from './operation.js';
 
 const $ = (id) => document.getElementById(id);
 let settings;
@@ -45,7 +46,11 @@ async function run(code, task) {
   controller = active;
   statusKey = 'working';
   record('CHECK_STARTED', { check: code });
-  try { await task(active.signal); active.signal.throwIfAborted(); statusKey = code; }
+  try {
+    await waitForOperation(task(active.signal), active.signal);
+    active.signal.throwIfAborted();
+    statusKey = code;
+  }
   catch (error) {
     const aborted = active.signal.aborted;
     statusKey = aborted ? 'cancelled' : 'failed';
@@ -113,9 +118,10 @@ $('report').addEventListener('click', () => {
   download(report, 'trello-exporter-compatibility-report.json');
   statusKey = 'reported'; render();
 });
-$('connect').addEventListener('click', () => run('connected', async () => {
+$('connect').addEventListener('click', () => run('connected', async signal => {
   await t.getOAuth2ApiClient().authorize({ scopes: ['read:board:trello', 'write:board:trello'] });
   // Authorization can return after cancellation; do not perform API work implicitly.
+  signal.throwIfAborted();
   record('AUTHORIZATION_COMPLETED');
 }));
 $('inspect').addEventListener('click', () => run('inspected', async signal => {

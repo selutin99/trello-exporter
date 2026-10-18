@@ -9,6 +9,6 @@
   "scripts": {
     "test": "node --test test/*.test.js",
     "dev": "node scripts/serve-prototype.js",
-    "check": "node --check prototype/api.js && node --check prototype/scope.js && node --check prototype/probe.js && node --check prototype/connector.js && node --check prototype/authorize.js"
+    "check": "node --check prototype/api.js && node --check prototype/scope.js && node --check prototype/probe.js && node --check prototype/connector.js && node --check prototype/authorize.js && node --check prototype/operation.js"
   }
 }
