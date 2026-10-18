@@ -39,20 +39,25 @@ and other browsers require separate compatibility checks before support is claim
 
 ## Run the compatibility prototype
 
-Node.js 20 or later is required. No third-party packages are needed.
+Use Node.js 24, or a compatible runtime (20.19+ / 22.12+). The application is
+written in strict TypeScript with Vite and two local npm workspace packages.
 
 ```sh
-npm test
+npm ci
 npm run check
 npm run dev
 ```
 
-Open the local address printed by the server. The standalone screen checks RU/EN
+Open `http://127.0.0.1:4173/trello-exporter/probe.html`. The standalone screen checks RU/EN
 and local file handling. Trello OAuth requires registering the connector as a
 Power-Up and opening it from inside the test board.
 
 See [prototype setup and test boundaries](docs/PROTOTYPE.md). The current UI makes
 only a metadata read for the explicitly configured board. Writes are disabled.
+
+`npm run check` checks types, runs offline tests, and builds `dist/`.
+`npm run preview` serves that build locally. GitHub Actions checks the same code,
+scans Git history for secrets, and publishes only the built files to Pages.
 
 Live checks passed in Chrome and Trello Desktop on macOS: the board button and
 modal, JSON download, local streaming of a 200 MiB file, RU/EN, and a scoped board
@@ -68,10 +73,13 @@ The initial design documents are in Russian:
 - [Snapshot and archive format](docs/SNAPSHOT_FORMAT.md)
 - [Market research and reference documentation](docs/RESEARCH.md)
 - [Contributing](CONTRIBUTING.md)
+- [Source layout and package boundaries](docs/ARCHITECTURE.md)
+- [Credential audit and repository hygiene](docs/SECURITY_AUDIT.md)
 
 These documents describe intended behavior, not capabilities already available.
-The application stack and delivery architecture will be selected after the
-Trello API feasibility checks described in the specification.
+The compatibility application uses TypeScript, Vite, and Vitest. Full snapshot
+processing and restoration architecture remain subject to the API feasibility
+checks described in the specification.
 
 ## License
 

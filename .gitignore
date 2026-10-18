@@ -12,7 +12,10 @@
 /restore-jobs/
 /tmp/
 
-# Common generated files; the application stack has not been selected yet.
+# Generated files and local editor settings.
+.idea/
+.vscode/
 node_modules/
 dist/
 coverage/
+*.tsbuildinfo

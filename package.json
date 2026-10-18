@@ -5,10 +5,26 @@
   "type": "module",
   "description": "Portable Trello board snapshots; initial API and desktop compatibility prototype.",
   "license": "MIT",
-  "engines": { "node": ">=20" },
+  "engines": { "node": "^20.19.0 || >=22.12.0" },
+  "workspaces": ["packages/*"],
   "scripts": {
-    "test": "node --test test/*.test.js",
-    "dev": "node scripts/serve-prototype.js",
-    "check": "node --check prototype/api.js && node --check prototype/scope.js && node --check prototype/probe.js && node --check prototype/connector.js && node --check prototype/authorize.js && node --check prototype/operation.js"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dev": "vite --host 127.0.0.1 --port 4173 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test && npm run build"
+  },
+  "dependencies": {
+    "@trello-exporter/probe-core": "*",
+    "@trello-exporter/trello-client": "*"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.43",
+    "happy-dom": "21.0.3",
+    "typescript": "7.0.2",
+    "vite": "8.3.4",
+    "vitest": "4.1.12"
   }
 }
