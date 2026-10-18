@@ -15,7 +15,7 @@ try {
       title: translations[chooseLocale(frame.getContext().locale)].modalTitle,
       // t.modal signs the URL itself, including the current Trello context.
       url: probeUrl(window.location.href, settings),
-      height: 640,
+      height: 780,
       fullscreen: false,
     });
   sdk.initialize(

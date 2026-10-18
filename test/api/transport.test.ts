@@ -1,9 +1,28 @@
 import { ApiErrorCode } from '../../src/shared/error-codes';
 import { expect, test, vi } from 'vitest';
 import { ApiError, TestBoardApi } from '../../src/api';
+import { Transport } from '../../src/api/transport';
 
 const board = { id: 'a'.repeat(24), shortLink: 'TEST0001', name: 'Synthetic', closed: false };
 const ok = (value: unknown) => new Response(JSON.stringify(value));
+
+test('binary downloads enforce their byte budget and release the stream on failure', async () => {
+  const transport = (response: Response) =>
+    new Transport({
+      boardReference: 'TEST0001',
+      getAccessToken: async () => 'synthetic',
+      fetchImpl: async () => response,
+    });
+  await expect(
+    transport(new Response('oversized')).download('/scoped-test-download', 3),
+  ).rejects.toMatchObject({ code: ApiErrorCode.InvalidResponse });
+  await expect(
+    transport(new Response(null)).download('/scoped-test-download', 3),
+  ).rejects.toMatchObject({ code: ApiErrorCode.InvalidResponse });
+  expect(await transport(new Response('abc')).download('/scoped-test-download', 3)).toEqual(
+    new TextEncoder().encode('abc'),
+  );
+});
 
 test('cancellation while acquiring a token prevents all HTTP requests', async () => {
   const controller = new AbortController();

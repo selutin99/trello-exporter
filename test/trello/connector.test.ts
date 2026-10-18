@@ -23,7 +23,7 @@ test('connector registers localized buttons and signs the modal through the SDK'
   await entry?.callback(frame);
   expect(frame.modal).toHaveBeenCalledWith(
     expect.objectContaining({
-      url: 'http://localhost:3000/trello-exporter/probe.html?board=TEST0001&clientId=public-client',
+      url: 'http://localhost:3000/trello-exporter/export.html?board=TEST0001&clientId=public-client',
     }),
   );
   expect(await capabilities['authorization-status'](frame)).toEqual({ authorized: true });

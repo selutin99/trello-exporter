@@ -3,8 +3,8 @@
 An open-source project for saving a Trello board's current state and rebuilding
 that board from a portable snapshot.
 
-**Status: specification draft and early compatibility prototype. Full snapshot
-export and restore are not implemented yet.**
+**Status: JSON/ZIP export implementation with a working synthetic local demo.
+Live export validation and snapshot restoration are still pending.**
 
 The primary formats are JSON and ZIP. ZIP bundles the snapshot with downloaded
 attachments so that recovery does not depend on the original files remaining
@@ -22,7 +22,7 @@ formats for analysis, reading, and sharing.
 The project targets the board's current content. Activity history, scheduled
 backups, and synchronization are outside the initial release.
 
-## MVP requirements
+## Initial release requirements
 
 - A Trello Power-Up usable inside Trello Desktop on macOS and Trello on the web
   in Chrome. Desktop authorization, file selection, and downloads must be tested
@@ -37,7 +37,7 @@ backups, and synchronization are outside the initial release.
 These are requirements awaiting implementation and validation. Windows Desktop
 and other browsers require separate compatibility checks before support is claimed.
 
-## Run the compatibility prototype
+## Run the export demo
 
 Use Node.js 24, or a compatible runtime (20.19+ / 22.13+). The application is
 written in strict TypeScript with Vite. It is a single npm project.
@@ -48,17 +48,22 @@ npm run check
 npm run dev
 ```
 
-Open `http://127.0.0.1:4173/trello-exporter/pages/probe.html`. The standalone screen checks RU/EN
-and local file handling. Trello OAuth requires registering the connector as a
-Power-Up and opening it from inside the test board.
+Open `http://127.0.0.1:4173/trello-exporter/pages/export.html` and choose
+**Explore a sample board**. Create a JSON snapshot or a ZIP with original synthetic
+attachment files, then download it and its coverage report. The sample has six
+cards, nineteen checklist items, three comments, and three files. It does not
+access Trello. See [export implementation and validation boundaries](docs/EXPORT_DEMO.md).
 
-See [prototype setup and test boundaries](docs/PROTOTYPE.md). The current UI makes
-only a metadata read for the explicitly configured board. Writes are disabled.
+The embedded export uses the official SDK and a read-only REST API reader restricted
+to the explicitly configured board. It requires a registered Power-Up on an HTTPS
+host; the new content export has not yet been validated live or in Desktop.
+Historical [compatibility diagnostics](docs/PROTOTYPE.md) remain at `probe.html`.
+Restoration and additional export formats are planned.
 
 `npm run check` checks types, TypeScript/CSS lint, code smells, formatting,
 coverage thresholds, and the production build. Use `npm run format` to apply
 formatting and `npm run lint:fix` for supported lint fixes.
-`npm run preview` serves that build at `/trello-exporter/probe.html`. GitHub Actions
+`npm run preview` serves that build at `/trello-exporter/export.html`. GitHub Actions
 checks the same code, scans Git history for secrets, and uploads a coverage artifact.
 It does not deploy a website. GitHub Pages is disabled; live Power-Up checks
 require a separately configured HTTPS host.
@@ -80,16 +85,17 @@ Project documentation and code comments are in English; the product supports
 Russian and English:
 
 - [Product specification and release scope](docs/SPECIFICATION.md)
+- [Export demo and validation boundaries](docs/EXPORT_DEMO.md)
 - [Snapshot and archive format](docs/SNAPSHOT_FORMAT.md)
 - [Market research and reference documentation](docs/RESEARCH.md)
 - [Contributing](CONTRIBUTING.md)
 - [Source layout and module boundaries](docs/ARCHITECTURE.md)
 - [Credential audit and repository hygiene](docs/SECURITY_AUDIT.md)
 
-These documents describe intended behavior, not capabilities already available.
-The compatibility application uses TypeScript, Vite, and Vitest. Full snapshot
-processing and restoration architecture remain subject to the API feasibility
-checks described in the specification.
+The specification includes planned behavior; the export demo document records current implementation and validation boundaries.
+Live content export and restoration remain subject to the API feasibility and
+compatibility checks described in the specification. The local demo does not
+claim a completed live backup/restore cycle.
 
 ## License
 

@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Portable Trello board snapshots; initial API and desktop compatibility prototype.",
+  "description": "Portable Trello board snapshots with JSON and ZIP exports.",
   "license": "MIT",
   "engines": {
     "node": "^20.19.0 || ^22.13.0 || >=24"
@@ -37,5 +37,9 @@
     "typescript-eslint": "8.71.2",
     "vite": "8.3.4",
     "vitest": "4.1.12"
+  },
+  "dependencies": {
+    "fflate": "0.8.3",
+    "zod": "4.6.7"
   }
 }

@@ -1,0 +1,123 @@
+import { BoardReader } from '../../api/reader';
+import { chooseLocale, translations } from '../../i18n';
+import { runtimeSettings } from '../../trello/runtime';
+import { pageReady } from '../../trello/sdk';
+import type { PowerUpFrame } from '../../trello/sdk';
+import { OAuthScope } from '../../trello/scopes';
+import { ExportFormat } from '../../snapshot/codes';
+import { createDemoCapture, demoFileReader } from '../../demo/preview';
+import { downloadBlob, downloadJson } from '../download';
+import { ExportSession } from './session';
+import { ExportView } from './view';
+
+const view = new ExportView(document);
+let locale = chooseLocale(navigator.language);
+let preferredLocale: string | null = null;
+try {
+  preferredLocale = localStorage.getItem('exporter-locale');
+} catch {
+  /* Optional preference */
+}
+if (preferredLocale) locale = chooseLocale(preferredLocale);
+let frame: PowerUpFrame | null = null;
+let reader: BoardReader | null = null;
+const session = new ExportSession(render);
+window.addEventListener('pagehide', () => session.cancel(), { once: true });
+function render(): void {
+  view.render(locale, session.model, !!frame, session.busy);
+}
+
+view.element('language', HTMLSelectElement).addEventListener('change', (event) => {
+  locale = chooseLocale((event.target as HTMLSelectElement).value);
+  preferredLocale = locale;
+  try {
+    localStorage.setItem('exporter-locale', locale);
+  } catch {
+    /* Optional preference */
+  }
+  render();
+});
+for (const input of document.querySelectorAll<HTMLInputElement>('input[name="format"]')) {
+  input.addEventListener('change', () =>
+    session.selectFormat(
+      input.value === String(ExportFormat.Json) ? ExportFormat.Json : ExportFormat.Zip,
+    ),
+  );
+}
+view
+  .element('demo', HTMLButtonElement)
+  .addEventListener('click', () => session.useDemo(createDemoCapture, demoFileReader));
+view.element('export', HTMLButtonElement).addEventListener('click', () => {
+  void session.prepare(reader, frame?.getContext().board ?? '');
+});
+view.element('cancel', HTMLButtonElement).addEventListener('click', () => session.cancel());
+view.element('save', HTMLButtonElement).addEventListener('click', () => {
+  const result = session.model.result;
+  if (result) downloadBlob(result.blob, result.filename);
+});
+view.element('report', HTMLButtonElement).addEventListener('click', () => {
+  const snapshot = session.model.result?.snapshot;
+  if (snapshot)
+    downloadJson(
+      {
+        snapshotId: snapshot.snapshotId,
+        capture: snapshot.capture,
+        coverage: snapshot.coverage,
+        issues: snapshot.issues,
+      },
+      'trello-exporter-report.json',
+    );
+});
+view.element('refresh', HTMLButtonElement).addEventListener('click', () => {
+  void loadBoard();
+});
+view.element('connect', HTMLButtonElement).addEventListener('click', () => {
+  void connect();
+});
+
+async function loadBoard(): Promise<void> {
+  const context = frame?.getContext().board;
+  if (reader && context) await session.load(reader, context);
+}
+async function connect(): Promise<void> {
+  if (!frame) return;
+  const button = view.element('connect', HTMLButtonElement);
+  button.disabled = true;
+  try {
+    await frame.getOAuth2ApiClient().authorize({ scopes: [OAuthScope.ReadBoard] });
+    await loadBoard();
+  } catch {
+    view.element('connection-status', HTMLElement).textContent = translations[locale].exportFailed;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+render();
+await pageReady(window);
+if (window.TrelloPowerUp && window.parent !== window) {
+  try {
+    const settings = runtimeSettings(window.location.href);
+    if (!settings.boardReference || !settings.clientId)
+      throw new Error('Missing public configuration');
+    const activeFrame = window.TrelloPowerUp.iframe(settings.oauthOptions);
+    frame = activeFrame;
+    reader = new BoardReader({
+      boardReference: settings.boardReference,
+      getAccessToken: () => activeFrame.getOAuth2ApiClient().getAccessToken(),
+    });
+    let initialized = false;
+    activeFrame.render(() => {
+      if (!preferredLocale) locale = chooseLocale(activeFrame.getContext().locale);
+      render();
+      if (!initialized) {
+        initialized = true;
+        void loadBoard();
+      }
+    });
+  } catch {
+    frame = null;
+    reader = null;
+    render();
+  }
+}

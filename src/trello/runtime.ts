@@ -40,7 +40,7 @@ export function runtimeSettings(href: string): RuntimeSettings {
  * @throws TypeError if the base URL is invalid
  */
 export function probeUrl(href: string, settings: RuntimeSettings): string {
-  const url = new URL('./probe.html', href);
+  const url = new URL('./export.html', href);
   if (settings.boardReference) url.searchParams.set('board', settings.boardReference);
   if (settings.clientId) url.searchParams.set('clientId', settings.clientId);
   return url.href;

@@ -4,105 +4,89 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="referrer" content="no-referrer" />
-    <title>Board Snapshot Exporter · Prototype data handling</title>
+    <title>trello-exporter · Data handling</title>
     <link rel="stylesheet" href="../styles/probe.css" />
   </head>
   <body>
     <main>
-      <h1>Prototype data handling / Обработка данных прототипом</h1>
-      <p>Updated / Обновлено: 2026-10-18</p>
+      <h1>Data handling / Обработка данных</h1>
+      <p>trello-exporter · 2026-10-18</p>
       <section lang="en">
         <h2>English</h2>
         <p>
-          This notice describes the development compatibility prototype, not a released backup
-          service. Use synthetic test data.
+          trello-exporter prepares JSON snapshots and ZIP archives in your browser or Trello Desktop
+          window. The local sample preview uses synthetic data and makes no Trello API requests.
         </p>
         <p>
-          The current interface can request the selected test board's ID, name, short link, and
-          archived state directly from the Trello REST API. It does not enumerate other boards,
-          request member profiles, or perform API writes.
+          When opened as an authorized Trello Power-Up, export reads only the explicitly configured
+          board, including its lists, cards, checklists, comments, labels, member display
+          identities, custom fields, and attachment metadata. ZIP export downloads available
+          Trello-uploaded files. External attachment links are not fetched. This export interface
+          does not modify boards.
         </p>
         <p>
-          The project operates no backend that receives board data, files, or tokens. Selected files
-          are read locally in chunks and are not uploaded. Optional downloaded diagnostics contain
-          the selected board metadata, test file names and sizes, timestamps, and result codes.
-          These files remain under your control; do not publish private diagnostic reports.
+          The project operates no backend receiving board content, exports, files, or tokens.
+          Prepared exports stay in memory until downloaded or the window is closed. Downloaded files
+          contain board content and may contain personal information; keep them private. Warnings
+          identify unavailable content. A capture spans an interval and is not an atomic backup.
         </p>
         <p>
-          OAuth is handled by Atlassian's Power-Up SDK. Its tokens are kept in Trello private plugin
-          data and used in Authorization headers to Trello. They are not included in reports or
-          application logs. Power-Up OAuth permissions include board read/write access within the
-          authorized workspace even though this prototype interface disables writes.
+          Authorization is handled by Atlassian's official Power-Up SDK. Tokens stay in Trello
+          private plugin data and are sent only in Authorization headers to Trello. They are not
+          included in exports, reports, or application logs. Existing OAuth grants may include
+          workspace board read/write permissions, although export uses read-only requests.
         </p>
         <p>
-          The interface may remember a language preference and the last fixed OAuth callback
-          diagnostic stage in local browser storage. This diagnostic stage contains no authorization
-          code, token, URL, or user ID. Closing the page discards the in-memory diagnostic session.
-          Deleting local site data removes these local values but does not revoke OAuth access.
+          The app may remember your language and a fixed authorization diagnostic stage in local
+          storage. Neither value contains tokens or authorization codes. No analytics or advertising
+          scripts are added. The official SDK is loaded from Atlassian's CDN; a configured static
+          host and Atlassian receive ordinary network request metadata under their own policies.
         </p>
         <p>
-          The development interface runs locally or on a separately configured static host and loads
-          the SDK from Atlassian's CDN. Those providers receive ordinary network request metadata
-          under their own policies. The project adds no analytics or advertising scripts.
-        </p>
-        <p>
-          Use
-          <a href="%CONNECTED_APPS_URL%" rel="noreferrer">Atlassian connected apps</a>
-          to manage or revoke this app's access. Disabling a Power-Up and deleting local files are
-          separate actions.
-        </p>
-        <p>
-          Support:
-          <a href="%SUPPORT_ISSUES_URL%" rel="noreferrer">GitHub Issues</a>. Use synthetic examples
-          and omit tokens and private data. This notice and the Trello data-storage declaration must
-          be reviewed before introducing full snapshots or any server-side storage.
+          Use <a href="%CONNECTED_APPS_URL%" rel="noreferrer">Atlassian connected apps</a> to revoke
+          access. Local file deletion and OAuth revocation are separate actions. For support, use
+          <a href="%SUPPORT_ISSUES_URL%" rel="noreferrer">GitHub Issues</a> with synthetic examples
+          only.
         </p>
       </section>
       <section lang="ru">
         <h2>Русский</h2>
         <p>
-          Описание относится к техническому прототипу, а не выпущенному сервису резервного
-          копирования. Используйте синтетические тестовые данные.
+          trello-exporter собирает JSON-снимки и ZIP-архивы в браузере или окне Trello Desktop.
+          Локальный пример использует синтетические данные и не обращается к Trello API.
         </p>
         <p>
-          Текущий интерфейс может получить через Trello REST API ID, название, короткую ссылку и
-          признак архива выбранной тестовой доски. Он не перечисляет другие доски, не запрашивает
-          профили участников и не выполняет запись через API.
+          При запуске из авторизованного Power-Up экспорт читает только явно настроенную доску:
+          списки, карточки, чек-листы, комментарии, метки, отображаемые сведения об участниках,
+          пользовательские поля и сведения о вложениях. В ZIP скачиваются доступные файлы,
+          загруженные в Trello. Внешние ссылки не обходятся. Интерфейс экспорта не изменяет доски.
         </p>
         <p>
-          У проекта нет сервера, который принимает содержимое досок, файлы или токены. Выбранные
-          файлы читаются частями на устройстве и не загружаются на сервер. Скачиваемая по желанию
-          диагностика содержит метаданные выбранной доски, имена и размеры тестовых файлов, время и
-          коды результатов. Этими файлами управляете вы; не публикуйте отчёты с личными данными.
+          У проекта нет сервера, принимающего содержимое досок, экспорты, файлы или токены.
+          Собранный экспорт остаётся в памяти до скачивания или закрытия окна. Скачанные файлы
+          содержат данные доски и могут содержать личную информацию; храните их приватно.
+          Недоступные данные перечисляются в предупреждениях. Снимок собирается за интервал времени
+          и не является атомарной резервной копией.
         </p>
         <p>
-          OAuth обслуживает Power-Up SDK Atlassian. Токены хранятся в приватных plugin data Trello и
-          передаются в заголовках Authorization при обращении к Trello. В отчёты и журналы
-          приложения они не включаются. OAuth для Power-Up выдаёт права чтения и записи досок в
-          авторизованном Workspace, хотя интерфейс этого прототипа запись отключает.
+          Авторизацией управляет официальный Power-Up SDK Atlassian. Токены хранятся в приватных
+          plugin data Trello и отправляются в заголовках Authorization только в Trello. В экспорт,
+          отчёты и журналы приложения они не включаются. Существующее OAuth-разрешение может
+          включать чтение и запись досок рабочего пространства, хотя экспорт выполняет только
+          чтение.
         </p>
         <p>
-          Интерфейс может запомнить выбранный язык и последний фиксированный диагностический этап
-          OAuth callback в локальном хранилище браузера. Этот этап не содержит код авторизации,
-          токен, URL или ID пользователя. Закрытие страницы удаляет диагностическую сессию из
-          памяти. Очистка локальных данных сайта удаляет эти значения, но не отзывает OAuth-доступ.
+          Приложение может запомнить язык и фиксированный диагностический этап авторизации в
+          локальном хранилище. Эти значения не содержат токенов и кодов авторизации. Аналитики и
+          рекламы нет. SDK загружается из CDN Atlassian; настроенный статический хостинг и Atlassian
+          получают обычные технические сведения о запросах согласно своим политикам.
         </p>
         <p>
-          Технический интерфейс работает локально или на отдельно настроенном статическом хостинге и
-          загружает SDK из CDN Atlassian. Провайдеры получают обычные технические сведения о сетевых
-          запросах согласно своим политикам. Аналитические и рекламные скрипты проект не добавляет.
-        </p>
-        <p>
-          Управление и отзыв разрешения доступны в разделе
-          <a href="%CONNECTED_APPS_URL%" rel="noreferrer">подключённых приложений Atlassian</a>.
-          Отключение Power-Up и удаление локальных файлов — отдельные действия.
-        </p>
-        <p>
-          Поддержка:
-          <a href="%SUPPORT_ISSUES_URL%" rel="noreferrer">GitHub Issues</a>. Прикладывайте
-          синтетические примеры без токенов и личных данных. Перед добавлением полного экспорта или
-          серверного хранения это описание и декларацию хранения данных в Trello необходимо
-          пересмотреть.
+          Отозвать доступ можно в
+          <a href="%CONNECTED_APPS_URL%" rel="noreferrer">подключённых приложениях Atlassian</a>.
+          Удаление локальных файлов и отзыв доступа — отдельные действия. Для обратной связи
+          используйте <a href="%SUPPORT_ISSUES_URL%" rel="noreferrer">GitHub Issues</a> только с
+          синтетическими примерами.
         </p>
       </section>
     </main>

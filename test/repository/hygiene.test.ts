@@ -9,7 +9,9 @@ test('tracked files exclude generated dependencies, runtime data, and large bina
   const forbidden =
     /(^|\/)(node_modules|dist|build|coverage|exports|backups|snapshots|import-reports|restore-jobs|tmp|\.idea|\.git)(\/|$)|(^|\/)\.env(?!\.example$)(\.|$)|\.(zip|pdf|xlsx|png|jpe?g|mp4|tsbuildinfo)$/i;
   for (const file of files) {
-    expect(file, `Unexpected tracked runtime/generated file: ${file}`).not.toMatch(forbidden);
+    const productIcon = /^src\/assets\/icons\/[a-z0-9-]+\.png$/.test(file);
+    if (!productIcon)
+      expect(file, `Unexpected tracked runtime/generated file: ${file}`).not.toMatch(forbidden);
     let size: number;
     try {
       size = statSync(file).size;

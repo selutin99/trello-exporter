@@ -1,22 +1,28 @@
 # Application structure
 
-The current implementation is a Power-Up compatibility probe, not the full
-snapshot exporter. It uses strict TypeScript, Vite for a static multi-page build,
-and Vitest for offline tests with synthetic data.
+The application implements a read-only JSON/ZIP export pipeline and a synthetic
+local demo, with separate historical compatibility diagnostics. It uses strict
+TypeScript, Vite for a static multi-page build, Zod for API projections, fflate
+for ZIP storage, and Vitest for offline tests with synthetic data. Live export
+validation and restoration are pending.
 
 ```text
 src/
   api/                 scoped API client, transport, validation, and retry policy
-  app/                 application wiring, DOM view, and local downloads
+  app/                 diagnostic wiring and shared local downloads
+    export/            export entry point, session state, and text-only DOM view
+  snapshot/            capture, normalization, archive packaging, types, and codes
+  demo/                synthetic board content and local preview file boundary
   core/                checks, cancellation, reports, diagnostics, and file streams
   config/              reviewed public service URLs and HTML URL placeholders
   shared/              stable error code enums shared across domains
   trello/              official SDK adapter, connector, OAuth callback, and URLs
-  pages/               connector, probe, authorize, and privacy HTML
+  pages/               connector, export, diagnostics, authorization, and privacy HTML
   styles/              CSS
-  assets/icons/        source Power-Up SVG
+  assets/icons/        compact board-button SVG and generated 144px PNG
   i18n/
     locales/en.ts      English messages and the message-key contract
+    locales/export-*.ts  separate product export messages in both languages
     locales/ru.ts      Russian messages checked against that contract
     index.ts           locale selection and safe text rendering
     types.ts           locale enum and message types
@@ -71,7 +77,8 @@ and the SVG XML namespace are not deployment-specific service endpoints.
 HTML, CSS, icons, and translations have separate directories. The connector
 imports the SVG, which receives a hashed asset filename during the build.
 Translations and diagnostic content use `textContent`, never HTML interpretation.
-The public data-handling page includes both product languages so it can be read
+The generated PNG brands the export page and the app listing; its generation
+prompt is recorded in [branding](BRANDING.md). The public data-handling page includes both product languages so it can be read
 without JavaScript. Code, comments, repository documentation, and community
 forms are in English; Russian is used for localized product content and deliberate
 Unicode fixtures.
@@ -97,7 +104,12 @@ ignored `coverage/`. CI uploads these as a seven-day artifact, never as Pages.
 
 Tests mirror source paths, for example `src/api/client.ts` and
 `test/api/client.test.ts`. Repository and build checks use dedicated test folders.
-They exercise board scope, response validation, GET retries, uncertain POST
+The export session owns one cancellable operation, separates preparation from
+user-initiated download, and drops late results after cancellation. Snapshot
+normalization and ZIP packaging are independent of the DOM and SDK. See
+[export boundaries](EXPORT_DEMO.md) for content, file budget, and validation limits.
+
+Tests exercise board scope, response validation, GET retries, uncertain POST
 results, cancellation, late SDK completion, safe diagnostics, a streamed 200 MiB
 file, DOM behavior, localization, and callback paths. SDK and HTTP boundaries are
 stubbed. These tests do not establish a working full JSON/ZIP restore cycle.

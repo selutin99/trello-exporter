@@ -8,6 +8,7 @@ import type { ClientOptions, RequestOptions } from './types';
 interface TransportOptions extends RequestOptions {
   query?: Record<string, string>;
   body?: Record<string, string>;
+  binary?: boolean;
 }
 
 /** Internal transport. Callers use the board-scoped facade, never arbitrary endpoints */
@@ -31,6 +32,51 @@ export class Transport {
     path: string,
     options: TransportOptions = {},
   ): Promise<unknown> {
+    const response = await this.#response(method, path, options);
+    return readJson(response, method, options.signal);
+  }
+
+  /**
+   * Downloads attachment bytes through a fixed API path with a strict byte budget
+   * @param path - Scoped attachment download endpoint
+   * @param maximumBytes - Remaining attachment budget
+   * @param options - Optional cancellation signal
+   * @returns The downloaded file bytes
+   * @throws ApiError on unreadable or oversized files; the signal reason on cancellation
+   */
+  async download(
+    path: string,
+    maximumBytes: number,
+    options: RequestOptions = {},
+  ): Promise<Uint8Array<ArrayBuffer>> {
+    const response = await this.#response(HttpMethod.Get, path, { ...options, binary: true });
+    if (!response.body) throw new ApiError(ApiErrorCode.InvalidResponse);
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    try {
+      for (;;) {
+        options.signal?.throwIfAborted();
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        size += chunk.value.byteLength;
+        if (size > maximumBytes) throw new ApiError(ApiErrorCode.InvalidResponse);
+        chunks.push(chunk.value);
+      }
+      const bytes = new Uint8Array(size);
+      let offset = 0;
+      for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.length;
+      }
+      return bytes;
+    } finally {
+      await reader.cancel().catch(() => undefined);
+      reader.releaseLock();
+    }
+  }
+
+  async #response(method: HttpMethod, path: string, options: TransportOptions): Promise<Response> {
     const url = new URL(`${serviceUrls.trelloApi}${path}`);
     for (const [key, value] of Object.entries(options.query ?? {}))
       url.searchParams.set(key, value);
@@ -38,7 +84,7 @@ export class Transport {
     for (let attempt = 0; attempt < attempts; attempt++) {
       const response = await this.#send(method, url, options);
       options.signal?.throwIfAborted();
-      if (response.ok) return readJson(response, method, options.signal);
+      if (response.ok) return response;
       const canRetry =
         method === HttpMethod.Get &&
         [429, 502, 503, 504].includes(response.status) &&
@@ -63,7 +109,11 @@ export class Transport {
     return token;
   }
 
-  async #send(method: HttpMethod, url: URL, { body, signal }: TransportOptions): Promise<Response> {
+  async #send(
+    method: HttpMethod,
+    url: URL,
+    { body, signal, binary }: TransportOptions,
+  ): Promise<Response> {
     const token = await this.#token(signal);
     signal?.throwIfAborted();
     try {
@@ -72,10 +122,11 @@ export class Transport {
       return await fetchRequest(url.href, {
         method,
         credentials: 'omit',
-        redirect: 'error',
+        // Fetch strips Authorization on cross-origin redirects to Trello's signed file host.
+        redirect: binary ? 'follow' : 'error',
         cache: 'no-store',
         headers: {
-          Accept: 'application/json',
+          Accept: binary ? 'application/octet-stream' : 'application/json',
           Authorization: `Bearer ${token}`,
           ...(body ? { 'Content-Type': 'application/json' } : {}),
         },

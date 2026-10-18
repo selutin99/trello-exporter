@@ -1,8 +1,9 @@
 # Repository instructions
 
 - Never create or use Git worktrees. Work in the main project directory.
-- The project has a specification and an early compatibility prototype. Keep
-  planned export/restore features clearly distinguished from implemented probes.
+- The project has a JSON/ZIP export implementation, a synthetic local demo, and
+  historical compatibility diagnostics. Keep implemented export paths distinct
+  from pending live validation, restoration, and additional formats
 - Keep the product specification and snapshot format consistent when changing
   behavior or release scope.
 - Use synthetic board data in examples, fixtures, screenshots, and issues.
@@ -22,6 +23,7 @@
   repository documentation, issue forms, and pull request templates in English
 - Keep Russian product strings in the Russian locale resource; deliberate Unicode
   fixtures and the bilingual public data-handling notice are permitted
+- Product message resources must not end with periods in either language
 - Keep one npm project under `src/`; do not introduce npm workspaces for the MVP
 - Mirror source paths in tests: `src/api/client.ts` maps to
   `test/api/client.test.ts`, `src/core/controller.ts` to

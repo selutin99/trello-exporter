@@ -1,0 +1,81 @@
+import { expect, test } from 'vitest';
+import { unzipSync, strFromU8 } from 'fflate';
+import { buildArchive, MAXIMUM_ARCHIVE_BYTES, sha256 } from '../../src/snapshot/archive';
+import { createDemoCapture, demoFileReader } from '../../src/demo/preview';
+import { demoFiles } from '../../src/demo/data';
+import { ApiError, ScopeError } from '../../src/api/errors';
+import { ApiErrorCode } from '../../src/shared/error-codes';
+import type { Snapshot, SnapshotFile } from '../../src/snapshot/types';
+
+test('ZIP contains exactly the manifest entries, verifies every digest, and preserves original file bytes', async () => {
+  const capture = createDemoCapture();
+  const blob = await buildArchive(capture, demoFileReader);
+  const entries = unzipSync(new Uint8Array(await blob.arrayBuffer()));
+  const manifest = JSON.parse(strFromU8(entries['manifest.json']!)) as {
+    snapshotId: string;
+    files: SnapshotFile[];
+  };
+  const snapshot = JSON.parse(strFromU8(entries['snapshot.json']!)) as Snapshot;
+  expect(manifest.snapshotId).toBe(snapshot.snapshotId);
+  expect(Object.keys(entries).sort()).toEqual(
+    ['manifest.json', ...manifest.files.map((file) => file.path)].sort(),
+  );
+  for (const file of manifest.files) {
+    const bytes = entries[file.path]!;
+    expect(bytes.length).toBe(file.size);
+    expect(await sha256(new Uint8Array(bytes))).toBe(file.sha256);
+  }
+  const sources = demoFiles();
+  for (const attachment of snapshot.attachments) {
+    const original = sources.find((file) => file.name === attachment.name)!;
+    expect(entries[attachment.file!.path]).toEqual(original.bytes);
+    expect(attachment.file!.path).not.toContain(attachment.name);
+  }
+  expect(snapshot.coverage.attachmentFiles).toEqual({ status: 'complete', count: 3 });
+  expect(snapshot.capture.outcome).toBe('complete');
+});
+
+test('failed downloads and byte-size mismatches produce a useful partial archive', async () => {
+  const capture = createDemoCapture();
+  let calls = 0;
+  const blob = await buildArchive(capture, {
+    file: async (_card, _attachment, budget) => {
+      expect(budget).toBe(MAXIMUM_ARCHIVE_BYTES);
+      if (++calls === 1) throw new ApiError(ApiErrorCode.NetworkError);
+      return new Uint8Array(0);
+    },
+  });
+  const entries = unzipSync(new Uint8Array(await blob.arrayBuffer()));
+  expect(Object.keys(entries).sort()).toEqual(['manifest.json', 'snapshot.json']);
+  expect(capture.snapshot.capture.outcome).toBe('partial');
+  expect(capture.snapshot.issues).toHaveLength(3);
+  expect(capture.snapshot.attachments.every((file) => file.file === null)).toBe(true);
+});
+
+test('foreign scope and cancellation terminate packaging instead of returning a download', async () => {
+  await expect(
+    buildArchive(createDemoCapture(), {
+      file: async () => {
+        throw new ScopeError();
+      },
+    }),
+  ).rejects.toThrow(ScopeError);
+  const active = new AbortController();
+  await expect(
+    buildArchive(createDemoCapture(), demoFileReader, {
+      signal: active.signal,
+      onProgress: () => active.abort(),
+    }),
+  ).rejects.toMatchObject({ name: 'AbortError' });
+});
+
+test('an empty attachment set still yields a valid ZIP with no file warnings', async () => {
+  const capture = createDemoCapture();
+  capture.snapshot.attachments = [];
+  const blob = await buildArchive(capture, demoFileReader);
+  expect(Object.keys(unzipSync(new Uint8Array(await blob.arrayBuffer()))).sort()).toEqual([
+    'manifest.json',
+    'snapshot.json',
+  ]);
+  expect(capture.snapshot.coverage.attachmentFiles).toEqual({ status: 'complete', count: 0 });
+});

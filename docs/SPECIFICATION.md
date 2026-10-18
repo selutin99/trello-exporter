@@ -1,7 +1,7 @@
 # trello-exporter: product specification
 
-Status: discussion draft with an early compatibility prototype. Full snapshot
-export and restoration are not implemented. Revision 0.2, October 18, 2026.
+Status: JSON/ZIP export implementation with a synthetic local demo. Live content
+export validation and restoration remain pending. Revision 0.3, October 18, 2026.
 Project license: MIT.
 
 ## 1. Problem
@@ -272,7 +272,7 @@ must not be advertised as supporting every Trello JSON export.
 
 | Stage                 | Outcome                                                                                                                                                                                                    |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current               | Specification, archive contract, compatibility prototype, tests, support boundaries, and open repository                                                                                                   |
+| Current               | Specification, archive contract, JSON/ZIP export implementation, local synthetic demo, compatibility diagnostics, tests, and open repository                                                               |
 | API/client validation | Authorization and file selection/saving in macOS Desktop and Chrome first; then pagination, long checklists, comments, 200 MiB attachments, custom fields, archives, and permissions on a disposable board |
 | v0.1                  | macOS Desktop/Chrome Power-Up, RU/EN, JSON/ZIP, preview, new-board restoration, reports, and resumable journal                                                                                             |
 | v0.2                  | CSV/XLSX and a built-in Trello JSON adapter with an explicit loss matrix                                                                                                                                   |
@@ -282,3 +282,12 @@ Before implementation, decide supported custom-field types, exact resource
 limits, journal/token storage, large-archive processing, and Power-Up hosting.
 Record decisions from actual validation rather than describing intended support
 as already implemented.
+
+## Implementation update — 2026-10-18
+
+A JSON/ZIP capture pipeline and bilingual export UI are implemented with an
+explicitly synthetic local demo. The current scope and validation limits are
+recorded in [EXPORT_DEMO.md](EXPORT_DEMO.md). Live test-board seeding and export,
+new Desktop export checks, and the full acceptance workload remain pending.
+Restoration and additional formats are not implemented. GitHub Pages remains
+disabled; this iteration uses a local-only demo by user choice.

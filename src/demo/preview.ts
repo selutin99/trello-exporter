@@ -1,0 +1,145 @@
+import type { CapturedBoard } from '../snapshot/capture';
+import { finishCapture } from '../snapshot/capture';
+import { AttachmentKind, CaptureOutcome } from '../snapshot/codes';
+import type { BoardReader } from '../api/reader';
+import { demoCards, demoFiles, demoLabels, demoLists } from './data';
+import { product } from '../config/product';
+
+const id = (number: number) => number.toString(16).padStart(24, '0');
+
+/**
+ * Builds a clearly synthetic preview with no network or account access
+ * @returns A new preview capture, safe to mutate during ZIP packaging
+ */
+export function createDemoCapture(): CapturedBoard {
+  const now = new Date().toISOString();
+  const files = demoFiles();
+  const snapshot: CapturedBoard['snapshot'] = {
+    format: 'trello-exporter.snapshot',
+    formatVersion: '0.1.0',
+    snapshotId: crypto.randomUUID(),
+    exporter: { ...product },
+    capture: {
+      startedAt: now,
+      completedAt: now,
+      consistency: 'best-effort',
+      changedDuringCapture: false,
+      outcome: CaptureOutcome.Complete,
+    },
+    coverage: {},
+    board: {
+      id: id(1),
+      name: 'Studio launch',
+      description: 'Synthetic preview board',
+      url: null,
+      closed: false,
+    },
+    lists: demoLists.map((name, order) => ({ id: id(10 + order), name, order, closed: false })),
+    cards: [],
+    labels: demoLabels.map((label, index) => ({ id: id(20 + index), ...label })),
+    members: [
+      { id: id(30), username: 'demo-designer', displayName: 'Demo designer' },
+      { id: id(31), username: 'demo-engineer', displayName: 'Demo engineer' },
+    ],
+    customFields: [
+      {
+        id: id(40),
+        name: 'Priority',
+        type: 'list',
+        order: 0,
+        options: [
+          { id: id(41), text: 'Normal', color: 'blue', order: 0 },
+          { id: id(42), text: 'High', color: 'red', order: 1 },
+        ],
+      },
+      { id: id(45), name: 'Working note', type: 'text', order: 1, options: [] },
+    ],
+    customFieldValues: [],
+    checklists: [],
+    checklistItems: [],
+    comments: [],
+    attachments: [],
+    issues: [],
+  };
+  const uploads: CapturedBoard['uploads'] = new Map();
+  const positions = new Map<number, number>();
+  for (const [index, card] of demoCards.entries()) {
+    const cardId = id(100 + index);
+    const order = positions.get(card.list) ?? 0;
+    positions.set(card.list, order + 1);
+    snapshot.cards.push({
+      id: cardId,
+      listId: id(10 + card.list),
+      name: card.name,
+      description: card.description,
+      order,
+      closed: card.closed,
+      start: null,
+      due: card.due,
+      dueComplete: index === 4,
+      labelIds: [id(20 + card.label)],
+      memberIds: [id(30 + (index % 2))],
+      cover: null,
+    });
+    const checklistId = id(200 + index);
+    snapshot.customFieldValues.push(
+      { cardId, fieldId: id(40), optionId: id(card.label === 1 ? 42 : 41) },
+      { cardId, fieldId: id(45), value: { text: `Synthetic note ${index + 1}` } },
+    );
+    snapshot.checklists.push({ id: checklistId, cardId, name: 'Tasks', order: 0 });
+    snapshot.checklistItems.push(
+      ...card.items.map((name, itemIndex) => ({
+        id: id(1000 + index * 10 + itemIndex),
+        checklistId,
+        name,
+        order: itemIndex,
+        checked: itemIndex < card.completed,
+      })),
+    );
+    if (card.comment)
+      snapshot.comments.push({
+        id: id(300 + index),
+        cardId,
+        authorId: null,
+        authorDisplayName: 'Demo reviewer',
+        createdAt: now,
+        text: card.comment,
+        order: 0,
+      });
+    const file = files[card.file];
+    if (file) {
+      const attachmentId = id(400 + card.file);
+      const source = {
+        id: attachmentId,
+        name: file.name,
+        isUpload: true,
+        url: '',
+        mimeType: file.mimeType,
+        bytes: file.bytes.length,
+        pos: 1,
+      };
+      uploads.set(attachmentId, source);
+      snapshot.attachments.push({
+        id: attachmentId,
+        cardId,
+        name: file.name,
+        kind: AttachmentKind.Upload,
+        url: null,
+        mimeType: file.mimeType,
+        size: file.bytes.length,
+        file: null,
+      });
+    }
+  }
+  finishCapture(snapshot);
+  return { snapshot, uploads };
+}
+
+/** Original synthetic bytes for preview ZIP files, without an HTTP implementation */
+export const demoFileReader: Pick<BoardReader, 'file'> = {
+  file: (_cardId, attachment) => {
+    const file = demoFiles().find((file) => file.name === attachment.name);
+    if (!file) return Promise.reject(new Error('Unknown synthetic file'));
+    return Promise.resolve(file.bytes);
+  },
+};

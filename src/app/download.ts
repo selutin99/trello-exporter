@@ -13,6 +13,16 @@ export function downloadJson(
   const blob = new Blob([JSON.stringify(value, null, 2)], {
     type: 'application/json;charset=utf-8',
   });
+  downloadBlob(blob, filename, document);
+}
+
+/**
+ * Starts a download from an explicit user action and later releases its object URL
+ * @param blob - Prepared export file
+ * @param filename - Suggested local filename
+ * @param document - Document hosting the temporary download link
+ */
+export function downloadBlob(blob: Blob, filename: string, document = window.document): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>trello-exporter</title>
+    <link rel="icon" href="../assets/icons/trello-exporter.png" type="image/png" />
+    <link rel="stylesheet" href="../styles/export.css" />
+    <script src="%POWER_UP_SDK_URL%" defer></script>
+    <script src="../app/export/main.ts" type="module"></script>
+  </head>
+  <body>
+    <main class="export-shell">
+      <header class="app-header">
+        <div class="brand">
+          <img src="../assets/icons/trello-exporter.png" alt="" width="30" height="30" /><span
+            >trello-exporter</span
+          >
+        </div>
+        <label class="language-picker"
+          ><span class="sr-only" data-i18n="language"></span
+          ><select id="language">
+            <option value="ru">Русский</option>
+            <option value="en">English</option>
+          </select></label
+        >
+      </header>
+      <nav class="tabs" aria-label="Workflow">
+        <span class="active-tab" data-i18n="exportTab"></span
+        ><span class="future-tab" data-i18n="exportRestore"></span>
+      </nav>
+      <div id="demo-notice" class="notice" data-i18n="exportDemoNotice" hidden></div>
+      <div class="hero">
+        <p class="eyebrow" data-i18n="exportEyebrow"></p>
+        <h1 data-i18n="exportTitle"></h1>
+        <p class="subtle" data-i18n="exportIntro"></p>
+      </div>
+      <section class="board-summary" aria-labelledby="board-name">
+        <div class="board-symbol" aria-hidden="true">▥</div>
+        <div>
+          <h2 id="board-name">—</h2>
+          <p id="board-counts" class="subtle"></p>
+        </div>
+        <button id="refresh" class="icon-button" data-i18n="exportRefresh" hidden></button>
+      </section>
+      <div id="standalone" class="notice" hidden>
+        <p data-i18n="exportStandalone"></p>
+        <button id="demo" data-i18n="exportDemo"></button>
+      </div>
+      <div id="connection" class="notice">
+        <p id="connection-status" data-i18n="exportAuthRequired"></p>
+        <button id="connect" data-i18n="exportConnect" disabled></button>
+      </div>
+      <fieldset id="formats">
+        <legend data-i18n="exportFormat"></legend>
+        <div class="format-grid">
+          <label class="format-option"
+            ><input type="radio" name="format" value="zip" checked /><span class="format-top"
+              ><span class="format-icon">ZIP</span
+              ><span class="recommendation" data-i18n="exportRecommended"></span></span
+            ><strong data-i18n="exportZipTitle"></strong
+            ><span class="subtle" data-i18n="exportZipNote"></span
+          ></label>
+          <label class="format-option"
+            ><input type="radio" name="format" value="json" /><span class="format-top"
+              ><span class="format-icon">{ }</span></span
+            ><strong data-i18n="exportJsonTitle"></strong
+            ><span class="subtle" data-i18n="exportJsonNote"></span
+          ></label>
+        </div>
+      </fieldset>
+      <section class="included" aria-labelledby="included-title">
+        <h2 id="included-title" data-i18n="exportIncluded"></h2>
+        <ul>
+          <li data-i18n="exportStructure"></li>
+          <li data-i18n="exportChecklists"></li>
+          <li data-i18n="exportComments"></li>
+          <li data-i18n="exportMetadata"></li>
+          <li data-i18n="exportArchived"></li>
+          <li data-i18n="exportAttachmentLabel"></li>
+        </ul>
+        <p class="subtle fine-print" data-i18n="exportNoHistory"></p>
+      </section>
+      <div id="operation" hidden>
+        <p id="progress-label" role="status" aria-live="polite"></p>
+        <progress id="progress" max="1"></progress
+        ><button id="cancel" class="text-button" data-i18n="exportCancel"></button>
+      </div>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+      <section id="result" class="result" aria-labelledby="result-title" hidden>
+        <div class="success-mark" aria-hidden="true">✓</div>
+        <h2 id="result-title"></h2>
+        <p id="result-note" class="subtle"></p>
+        <dl id="metrics" class="metrics"></dl>
+        <p id="file-size" class="subtle"></p>
+        <div id="warnings" class="warnings" hidden>
+          <h3 data-i18n="exportWarnings"></h3>
+          <ul id="warning-list"></ul>
+        </div>
+        <button id="save" class="primary"></button
+        ><button id="report" class="text-button" data-i18n="exportReport"></button>
+      </section>
+      <div class="export-footer">
+        <p class="privacy-note" data-i18n="exportPrivacy"></p>
+        <button id="export" class="primary" data-i18n="exportAction" disabled></button>
+      </div>
+      <p class="subtle fine-print" data-i18n="exportConsistency"></p>
+      <details class="technical">
+        <summary data-i18n="exportDetails"></summary>
+        <p data-i18n="exportFileLimit"></p>
+        <p>
+          <a
+            href="%CONNECTED_APPS_URL%"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-i18n="manageAccess"
+          ></a>
+        </p>
+      </details>
+      <footer>
+        <a href="./privacy.html" target="_blank" rel="noopener noreferrer" data-i18n="privacy"></a
+        ><a
+          href="%SUPPORT_ISSUES_URL%"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-i18n="exportSupport"
+        ></a
+        ><span>Open source · MIT</span>
+      </footer>
+    </main>
+  </body>
+</html>
