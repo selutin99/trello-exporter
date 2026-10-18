@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from 'vitest';
-import { legacyPages, pageNames } from '../build/legacy-pages';
+import { legacyPages, pageNames } from '../vite.config';
 
 test('legacy pages are identical built HTML, retaining absolute assets without redirects', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'trello-exporter-build-test-'));

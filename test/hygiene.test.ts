@@ -4,7 +4,7 @@ import { expect, test } from 'vitest';
 
 test('tracked files exclude generated dependencies, runtime data, and large binaries', () => {
   const files = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' }).split('\0').filter(Boolean);
-  const forbidden = /(^|\/)(node_modules|dist|coverage|exports|backups|snapshots|import-reports|restore-jobs|tmp|\.idea|\.git)(\/|$)|(^|\/)\.env(?!\.example$)(\.|$)|\.(zip|pdf|xlsx|png|jpe?g|mp4|tsbuildinfo)$/i;
+  const forbidden = /(^|\/)(node_modules|dist|build|coverage|exports|backups|snapshots|import-reports|restore-jobs|tmp|\.idea|\.git)(\/|$)|(^|\/)\.env(?!\.example$)(\.|$)|\.(zip|pdf|xlsx|png|jpe?g|mp4|tsbuildinfo)$/i;
   for (const file of files) {
     expect(file, `Unexpected tracked runtime/generated file: ${file}`).not.toMatch(forbidden);
     let size: number;
