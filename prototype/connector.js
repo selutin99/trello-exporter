@@ -10,12 +10,13 @@ const settings = runtimeSettings(window.location.href);
 console.info('[BoardSnapshotExporter] WINDOW_LOADED');
 const openProbe = (t) => {
   const url = new URL('./probe.html', window.location.href);
-  url.searchParams.set('v', '2');
+  url.searchParams.set('v', '3');
   if (settings.boardReference) url.searchParams.set('board', settings.boardReference);
   if (settings.clientId) url.searchParams.set('clientId', settings.clientId);
   return t.modal({
     title: 'Board Snapshot Exporter · Prototype',
-    url: t.signUrl(url.href), height: 640, fullscreen: false,
+    // t.modal signs the URL itself, including its current Trello context.
+    url: url.href, height: 640, fullscreen: false,
   });
 };
 

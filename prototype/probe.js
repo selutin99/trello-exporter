@@ -1,4 +1,4 @@
-import { TestBoardApi } from './api.js';
+import { TestBoardApi } from './api.js?v=3';
 import { chooseLocale, localizePage, translations } from './i18n.js';
 import { runtimeSettings } from './runtime.js';
 import { waitForOperation } from './operation.js';

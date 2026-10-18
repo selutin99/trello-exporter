@@ -51,7 +51,10 @@ export class TestBoardApi {
       if (typeof token !== 'string' || !token) throw new ApiError('AUTH_REQUIRED');
       let response;
       try {
-        response = await this.#fetch(url.href, {
+        // Browser fetch is a Web API: calling it as an instance method binds
+        // an invalid receiver and can throw "Illegal invocation" before I/O.
+        const fetchRequest = this.#fetch;
+        response = await fetchRequest(url.href, {
           method,
           credentials: 'omit',
           redirect: 'error',

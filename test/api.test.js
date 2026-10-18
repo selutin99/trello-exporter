@@ -25,6 +25,16 @@ function setup(responses, extra = {}) {
   return { client, calls };
 }
 
+test('transport is called without binding the API instance as its Web API receiver', async () => {
+  const { client } = setup([], {
+    fetchImpl: function () {
+      assert.equal(this, undefined);
+      return Promise.resolve(ok(board));
+    },
+  });
+  assert.deepEqual(await client.verifyBoard({ contextBoardId: board.id }), board);
+});
+
 test('no collection calls occur before board verification; tokens stay out of URLs', async () => {
   const { client, calls } = setup([ok(board), ok([list])]);
   await assert.rejects(() => client.readLists(), { code: 'BOARD_NOT_VERIFIED' });
