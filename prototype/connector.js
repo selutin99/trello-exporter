@@ -10,6 +10,7 @@ const settings = runtimeSettings(window.location.href);
 console.info('[BoardSnapshotExporter] WINDOW_LOADED');
 const openProbe = (t) => {
   const url = new URL('./probe.html', window.location.href);
+  url.searchParams.set('v', '2');
   if (settings.boardReference) url.searchParams.set('board', settings.boardReference);
   if (settings.clientId) url.searchParams.set('clientId', settings.clientId);
   return t.modal({
