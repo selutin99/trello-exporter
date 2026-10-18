@@ -93,6 +93,9 @@ async function connect(): Promise<void> {
   }
 }
 
+if (window.parent === window && new URL(window.location.href).searchParams.get('demo') === '1') {
+  session.useDemo(createDemoCapture, demoFileReader);
+}
 render();
 await pageReady(window);
 if (window.TrelloPowerUp && window.parent !== window) {

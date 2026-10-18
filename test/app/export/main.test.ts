@@ -15,6 +15,15 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 const start = () => import('../../../src/app/export/main');
+
+test('a standalone demo link starts with synthetic content and never initializes the SDK', async () => {
+  loadPage('export', 'demo=1');
+  const { sdk } = installSdk();
+  await start();
+  expect(document.getElementById('board-name')?.textContent).toBe('Studio launch');
+  expect(document.getElementById('demo-notice')?.hidden).toBe(false);
+  expect(sdk.iframe).not.toHaveBeenCalled();
+});
 const change = (selector: string, value: string) => {
   const input = document.querySelector<HTMLInputElement | HTMLSelectElement>(selector)!;
   input.value = value;

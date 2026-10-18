@@ -13,6 +13,9 @@ never makes Trello API requests. Choose JSON or ZIP, create a snapshot, then
 download it with a separate user action. Switch between Russian and English at
 any point. All product resources omit trailing periods.
 
+Append `?demo=1` to open the synthetic preview directly. This shortcut is accepted
+only in a standalone window; it cannot replace live content inside a Trello iframe.
+
 The fixture has three lists, six cards (including one archived card), three
 labels, six checklists with nineteen items, three comments, and three small
 attachments: a UTF-8 text brief, a CSV content plan, and an SVG illustration.
