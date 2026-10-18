@@ -54,6 +54,12 @@ Power-Up and opening it from inside the test board.
 See [prototype setup and test boundaries](docs/PROTOTYPE.md). The current UI makes
 only a metadata read for the explicitly configured board. Writes are disabled.
 
+Live checks passed in Chrome and Trello Desktop on macOS: the board button and
+modal, JSON download, local streaming of a 200 MiB file, RU/EN, and a scoped board
+metadata read through the REST API. For the tested Desktop flow, authorize on the
+same board in Chrome first, then return to Desktop. Direct Desktop OAuth callback
+handling still needs work. These checks do not validate full JSON/ZIP snapshots.
+
 ## Documentation
 
 The initial design documents are in Russian:
