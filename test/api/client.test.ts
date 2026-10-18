@@ -134,7 +134,7 @@ test('a card is created only in a freshly verified source list', async () => {
   assert.deepEqual(JSON.parse(calls.at(-1)!.body as string), {
     idList: list.id,
     name: '[Exporter test] API probe',
-    desc: 'Synthetic test data created by the Trello Exporter prototype.',
+    desc: 'Synthetic test data created by the trello-exporter prototype.',
   });
   assert.equal(new URL(calls.at(-1)!.url).pathname, '/1/cards');
 });

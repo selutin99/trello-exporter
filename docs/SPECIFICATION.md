@@ -1,4 +1,4 @@
-# Trello Exporter: product specification
+# trello-exporter: product specification
 
 Status: discussion draft with an early compatibility prototype. Full snapshot
 export and restoration are not implemented. Revision 0.2, October 18, 2026.

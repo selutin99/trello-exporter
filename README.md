@@ -1,4 +1,4 @@
-# Trello Exporter
+# trello-exporter
 
 An open-source project for saving a Trello board's current state and rebuilding
 that board from a portable snapshot.
