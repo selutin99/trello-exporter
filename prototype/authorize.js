@@ -1,5 +1,11 @@
 import { chooseLocale, translations } from './i18n.js';
 import { runtimeSettings } from './runtime.js';
+import { saveCallbackStage } from './diagnostics.js';
+
+const diagnostic = stage => {
+  try { saveCallbackStage(stage, window.localStorage); } catch { /* Optional. */ }
+};
+diagnostic('CALLBACK_STARTED');
 
 const locale = chooseLocale(navigator.language);
 document.documentElement.lang = locale;
@@ -25,8 +31,10 @@ try {
   if (!canReturn) throw new Error();
   failureCode = 'CALLBACK_RETURN_FAILED';
   await client.redirectUriCallback();
+  diagnostic('CALLBACK_COMPLETED');
   status.textContent = translations[locale].callbackDone;
 } catch {
+  diagnostic(failureCode);
   // Auth codes and SDK error details must never be written to the DOM or logs.
   status.textContent = `${translations[locale].callbackFailed} (${failureCode})`;
 }

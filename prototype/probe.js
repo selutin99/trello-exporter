@@ -2,6 +2,7 @@ import { TestBoardApi } from './api.js';
 import { chooseLocale, localizePage, translations } from './i18n.js';
 import { runtimeSettings } from './runtime.js';
 import { waitForOperation } from './operation.js';
+import { CALLBACK_STAGE_KEY, callbackStage } from './diagnostics.js';
 
 const $ = (id) => document.getElementById(id);
 let settings;
@@ -39,6 +40,12 @@ function record(code, detail = {}) {
   report.events.push({ at: new Date().toISOString(), code, ...detail });
   render();
 }
+
+window.addEventListener('storage', event => {
+  if (event.key !== CALLBACK_STAGE_KEY || !controller) return;
+  const stage = callbackStage(event.newValue);
+  if (stage) record('OAUTH_CALLBACK_STAGE', { stage });
+});
 
 async function run(code, task) {
   if (controller) return;

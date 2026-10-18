@@ -1,11 +1,13 @@
 import { runtimeSettings } from './runtime.js';
 import { chooseLocale } from './i18n.js';
 
+console.info('[BoardSnapshotExporter] MODULE_READY');
 // Both the SDK script and the module graph must be ready before initialization.
 if (document.readyState !== 'complete') {
   await new Promise(resolve => window.addEventListener('load', resolve, { once: true }));
 }
 const settings = runtimeSettings(window.location.href);
+console.info('[BoardSnapshotExporter] WINDOW_LOADED');
 const openProbe = (t) => {
   const url = new URL('./probe.html', window.location.href);
   if (settings.boardReference) url.searchParams.set('board', settings.boardReference);
@@ -34,4 +36,5 @@ window.TrelloPowerUp.initialize({
   },
 }, settings.oauthOptions);
 document.getElementById('connector-status').textContent = 'Connector initialized';
+console.info('[BoardSnapshotExporter] CONNECTOR_INITIALIZED');
 }
