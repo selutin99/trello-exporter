@@ -67,7 +67,9 @@ been validated against the live designated test board or Trello Desktop. The
 earlier diagnostics passed basic SDK, OAuth, file, and metadata checks; see
 [compatibility evidence](PROTOTYPE.md).
 
-The user selected a local-only demo for this iteration. GitHub Pages remains
-disabled. No live board was populated in this iteration. Live seeding/export tests
-require separately configured HTTPS hosting and matching registered URLs.
+The October 18 iteration used a local-only demo and did not populate a live board.
+On October 19 the user explicitly requested restoring GitHub Pages with separate
+CD after CI to show the Power-Up on the designated test board. See
+[deployment](DEPLOYMENT.md) for hosting and runtime configuration. A hosted UI
+does not itself establish successful live content export or Desktop support.
 Restoration and CSV/XLSX/Markdown/HTML/PDF export remain planned.

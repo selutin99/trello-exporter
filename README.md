@@ -65,8 +65,10 @@ coverage thresholds, and the production build. Use `npm run format` to apply
 formatting and `npm run lint:fix` for supported lint fixes.
 `npm run preview` serves that build at `/trello-exporter/export.html`. GitHub Actions
 checks the same code, scans Git history for secrets, and uploads a coverage artifact.
-It does not deploy a website. GitHub Pages is disabled; live Power-Up checks
-require a separately configured HTTPS host.
+CI does not deploy a website. A separate CD workflow publishes the checked site
+artifact to [GitHub Pages](https://selutin99.github.io/trello-exporter/) only after
+successful CI for a push to `main`. Coverage reports are never published. See
+[deployment](docs/DEPLOYMENT.md) for permissions and the CI-to-CD artifact handoff.
 
 `npm run test:coverage` generates HTML, LCOV, JSON summary, and console reports in
 ignored `coverage/`. Minimum coverage is 90% for statements/functions/lines and

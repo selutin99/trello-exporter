@@ -289,5 +289,12 @@ A JSON/ZIP capture pipeline and bilingual export UI are implemented with an
 explicitly synthetic local demo. The current scope and validation limits are
 recorded in [EXPORT_DEMO.md](EXPORT_DEMO.md). Live test-board seeding and export,
 new Desktop export checks, and the full acceptance workload remain pending.
-Restoration and additional formats are not implemented. GitHub Pages remains
-disabled; this iteration uses a local-only demo by user choice.
+Restoration and additional formats are not implemented. This October 18
+iteration used a local-only demo by user choice.
+
+## Delivery update — 2026-10-19
+
+GitHub Pages hosting is explicitly authorized for showing the Power-Up inside the
+designated test board. CI retains quality and secret checks; a separate CD workflow
+publishes only its checked site artifact after successful push CI on main.
+Coverage is never part of the site. See [DEPLOYMENT.md](DEPLOYMENT.md).

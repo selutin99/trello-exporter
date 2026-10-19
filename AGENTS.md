@@ -50,8 +50,11 @@
 - Run `npm run check` before publishing changes: typed lint, CSS lint, formatting,
   code smell analysis, type checking, tests with coverage gates, and a build
 - Keep coverage reports and generated build files out of Git
-- CI checks code and uploads coverage artifacts; do not enable GitHub Pages or
-  add deployment jobs without a new explicit user request
+- CI checks code and uploads coverage and the built Power-Up as separate artifacts
+- GitHub Pages deployment is explicitly authorized as of October 19, 2026
+- Keep CD in a separate workflow after successful CI for a push to this repository's
+  main branch; deploy only that CI run's site artifact, never coverage reports or
+  an unverified checkout; do not deploy pull request artifacts
 - Keep GitHub Actions pinned to commit SHAs in the workflow's centralized YAML
   anchors; `uses:` does not support `${{ env.* }}` expressions
 - Configure community templates only in this repository's `.github/` directory

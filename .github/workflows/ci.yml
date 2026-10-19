@@ -67,6 +67,14 @@ jobs:
         run: npm run test:coverage
       - name: Build without publishing
         run: npm run build
+      - name: Save checked Power-Up site for CD
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: *upload_artifact
+        with:
+          name: power-up-site
+          path: dist/
+          retention-days: 7
+          if-no-files-found: error
       - name: Save coverage report
         if: always()
         uses: *upload_artifact

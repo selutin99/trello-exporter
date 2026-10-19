@@ -89,9 +89,10 @@ change Vite's `base` when choosing a different hosting path.
 
 The build also creates legacy `/prototype/*.html` aliases without redirects, so
 OAuth query and fragment data can reach the official SDK unchanged on a compatible
-host. These aliases do not publish a site. GitHub Pages is disabled, CI has no
-deployment job, and `.nojekyll` is unnecessary. Live Power-Up checks now require a
-separately configured HTTPS host and matching registered connector/callback URLs.
+host. The separate CD workflow publishes only the checked CI build to GitHub Pages.
+The root opens the synthetic demo; registered connector/callback paths serve the
+Power-Up inside Trello. CI itself performs no deployment, and `.nojekyll` is
+unnecessary for this artifact deployment. See [deployment](DEPLOYMENT.md).
 
 ## Quality checks
 
@@ -118,4 +119,7 @@ CI has separate secrets and quality jobs with read-only repository permissions.
 Gitleaks scans all fetched Git history with redacted output. Its version and
 archive checksum are fixed. Action SHAs are defined once as YAML anchors in the
 workflow's top-level block; steps use short aliases because `uses:` does not
-support environment expressions. No Pages or deployment permissions are granted.
+support environment expressions. CI has no Pages or deployment permissions. The separate CD workflow receives
+publication permissions only in its deployment job after successful CI for a
+trusted push to main. It downloads the triggering run's site artifact, without
+executing a repository checkout or publishing coverage reports.

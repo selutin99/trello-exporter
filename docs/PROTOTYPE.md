@@ -39,9 +39,11 @@ registered Power-Up inside Trello.
 `npm run preview` serves the production build at
 `http://127.0.0.1:4173/trello-exporter/probe.html`.
 
-GitHub Pages is disabled at the user's request. CI does not publish a website.
-The former Pages connector and callback URLs are unavailable; further live
-checks require a separate HTTPS host and matching registered URLs.
+GitHub Pages hosting was restored by explicit request on October 19, 2026. A
+separate CD workflow publishes the checked site only after successful CI for a
+push to main. CI itself does not deploy. See [deployment](DEPLOYMENT.md). The
+legacy connector and callback paths remain available, preserving the registered
+OAuth callback without a redirect change.
 
 ## Registering a test Power-Up
 

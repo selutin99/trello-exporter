@@ -5,7 +5,7 @@ import { copyFile, mkdir, rename, rmdir } from 'node:fs/promises';
 import type { Plugin } from 'vite';
 import { htmlServiceUrls } from './src/config/services.ts';
 
-export const pageNames = ['connector', 'export', 'probe', 'authorize', 'privacy'] as const;
+export const pageNames = ['index', 'connector', 'export', 'probe', 'authorize', 'privacy'] as const;
 
 /**
  * Resolves public service links consistently in HTML without runtime JavaScript
