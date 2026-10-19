@@ -1,6 +1,9 @@
 import { expect, test } from 'vitest';
+import { unzipSync, strFromU8 } from 'fflate';
 import { captureBoard } from '../../src/snapshot/capture';
-import { ApiError, ScopeError } from '../../src/api/errors';
+import { buildArchive, jsonBytes } from '../../src/snapshot/archive';
+import type { Snapshot } from '../../src/snapshot/types';
+import { ApiError, ScopeError } from '../../src/api';
 import { ApiErrorCode } from '../../src/shared/error-codes';
 import { ExportStage, IssueCode } from '../../src/snapshot/codes';
 import {
@@ -10,9 +13,49 @@ import {
   sourceBoard,
   sourceCard,
   sourceComment,
+  sourceList,
 } from '../helpers/snapshot';
 
-test('capture preserves archived current content, custom values, order, and explicit JSON file exclusions', async () => {
+test('JSON and ZIP exclude archived objects and never request their nested content', async () => {
+  const { reader, calls } = readerFixture({
+    [`/1/boards/${id(1)}/lists`]: [sourceList, { ...sourceList, id: id(90), closed: true }],
+    [`/1/boards/${id(1)}/cards`]: [
+      sourceCard,
+      { ...sourceCard, id: id(91), closed: true },
+      { ...sourceCard, id: id(92), idList: id(90) },
+    ],
+  });
+  const capture = await captureBoard(reader, id(1));
+  const json = JSON.parse(strFromU8(jsonBytes(capture.snapshot))) as Snapshot;
+  const downloadedCards: string[] = [];
+  const blob = await buildArchive(capture, {
+    file: (cardId) => {
+      downloadedCards.push(cardId);
+      return Promise.resolve(new TextEncoder().encode('demo'));
+    },
+  });
+  const zip = JSON.parse(
+    strFromU8(unzipSync(new Uint8Array(await blob.arrayBuffer()))['snapshot.json']!),
+  ) as Snapshot;
+  for (const snapshot of [json, zip]) {
+    expect(snapshot.lists.map((list) => list.id)).toEqual([sourceList.id]);
+    expect(snapshot.cards.map((card) => card.id)).toEqual([sourceCard.id]);
+    expect(snapshot.attachments.map((attachment) => attachment.cardId)).toEqual([sourceCard.id]);
+    expect(snapshot.checklists.map((checklist) => checklist.cardId)).toEqual([sourceCard.id]);
+    expect(snapshot.comments.map((comment) => comment.cardId)).toEqual([sourceCard.id]);
+    expect(snapshot.capture.outcome).toBe('complete');
+  }
+  expect(downloadedCards).toEqual([sourceCard.id]);
+  expect(
+    calls.some(
+      (url) =>
+        url.pathname.startsWith(`/1/cards/${id(91)}`) ||
+        url.pathname.startsWith(`/1/cards/${id(92)}`),
+    ),
+  ).toBe(false);
+});
+
+test('capture preserves active current content, custom values, order, and explicit JSON file exclusions', async () => {
   const { reader, calls } = readerFixture();
   const stages: string[] = [];
   const { snapshot, uploads } = await captureBoard(reader, id(1), {
@@ -20,7 +63,7 @@ test('capture preserves archived current content, custom values, order, and expl
   });
   expect(snapshot.capture.outcome).toBe('complete');
   expect(snapshot.cards[0]).toMatchObject({
-    closed: true,
+    closed: false,
     dueComplete: true,
     description: sourceCard.desc,
   });

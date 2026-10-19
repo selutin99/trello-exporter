@@ -28,4 +28,7 @@ export function localizePage(locale: Locale, document: Document): void {
     const key = element.dataset.i18n ?? '';
     element.textContent = Object.hasOwn(strings, key) ? strings[key as MessageKey] : key;
   }
+  for (const link of document.querySelectorAll<HTMLAnchorElement>('a[data-i18n="privacy"]')) {
+    link.setAttribute('href', `./privacy.html?lang=${locale}`);
+  }
 }

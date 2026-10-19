@@ -51,6 +51,11 @@ export class ExportView {
     this.element('formats', HTMLFieldSetElement).disabled = busy;
     for (const input of this.document.querySelectorAll<HTMLInputElement>('input[name="format"]'))
       input.checked = input.value === String(model.format);
+    const includesFiles = model.format === ExportFormat.Zip;
+    this.element('attachment-coverage', HTMLElement).classList.toggle('excluded', !includesFiles);
+    this.element('attachment-mark', HTMLElement).textContent = includesFiles ? '✓' : '×';
+    this.element('attachment-status', HTMLElement).textContent =
+      text[includesFiles ? 'exportIncludedStatus' : 'exportExcludedStatus'];
     const action = this.element('export', HTMLButtonElement);
     action.disabled = !model.board || busy;
     action.textContent = model.result ? text.exportAnother : text.exportAction;

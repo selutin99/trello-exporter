@@ -22,8 +22,12 @@
 - Communicate with the user in Russian. Keep source identifiers, comments,
   repository documentation, issue forms, and pull request templates in English
 - Keep Russian product strings in the Russian locale resource; deliberate Unicode
-  fixtures and the bilingual public data-handling notice are permitted
+  fixtures are permitted
 - Product message resources must not end with periods in either language
+- Russian product copy uses the Cyrillic letter U+0435 instead of U+0451
+- Show the data-handling notice only in the selected interface language
+- Export only active lists and active cards in those lists; never collect archived
+  card content or attachment files
 - Keep one npm project under `src/`; do not introduce npm workspaces for the MVP
 - Mirror source paths in tests: `src/api/client.ts` maps to
   `test/api/client.test.ts`, `src/core/controller.ts` to

@@ -30,4 +30,9 @@ export default defineConfig([
   },
   { files: ['*.mjs'], extends: [js.configs.recommended] },
   { files: ['src/**/*.css'], language: 'css/css', plugins: { css }, extends: ['css/recommended'] },
+  {
+    files: ['src/styles/export.css', 'src/styles/privacy.css'],
+    // The CSS validator does not resolve the shared theme.css import
+    rules: { 'css/no-invalid-properties': ['error', { allowUnknownVariables: true }] },
+  },
 ]);

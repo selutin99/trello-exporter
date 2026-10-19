@@ -1,7 +1,7 @@
 # Snapshot and ZIP format
 
-Status: draft contract 0.1.0, October 18, 2026. There is no format implementation
-or JSON Schema yet. Fields may change together with the example before release.
+Status: draft contract 0.1.0, October 19, 2026. JSON/ZIP export is implemented;
+JSON Schema and restoration are pending. Fields may change together with the example before release.
 
 ## 1. General rules
 
@@ -9,6 +9,10 @@ or JSON Schema yet. Fields may change together with the example before release.
 - JSON uses UTF-8. Dates use RFC 3339 in UTC; unknown dates are `null`.
 - A snapshot contains one board. Source IDs are opaque relationship keys, never
   IDs to reuse for newly created Trello objects.
+- Export contains only active lists and active cards in those lists. Archived
+  lists, archived cards, and their nested content/files are intentionally excluded;
+  `complete` coverage is relative to this active-only scope. The existing `closed`
+  fields remain compatible metadata; exported lists/cards always use `false`.
 - Collections are normalized: cards reference lists, checklists reference cards.
 - Collection arrays are required, including empty arrays. Omission is expressed
   through `coverage`, never through a missing key.
@@ -149,8 +153,7 @@ still be listed separately even when status is `complete`.
 ## 6. Example and further formalization
 
 The [minimal snapshot](minimal.snapshot.json) contains a synthetic board, one
-list, and one card. It illustrates the draft contract, not an implemented
-exporter/importer.
+list, and one card. It illustrates the draft contract; restoration is not implemented.
 
 Implementation must add JSON Schemas for snapshots, manifests, and reports, a
 complete example with files and custom fields, and integrity, version-compatibility,

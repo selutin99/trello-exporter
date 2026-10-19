@@ -1,15 +1,40 @@
 import { expect, test, vi } from 'vitest';
-import { ScopeError } from '../../src/api/errors';
+import { ScopeError } from '../../src/api';
 import {
   id,
   readerFixture,
   sourceAttachment,
   sourceBoard,
   sourceCard,
+  sourceList,
   sourceChecklist,
   sourceComment,
   verifiedReader,
 } from '../helpers/snapshot';
+
+test('only active cards in active lists enter the reader allowlist, even if filters are ignored', async () => {
+  const { reader, calls } = readerFixture({
+    [`/1/boards/${id(1)}/lists`]: [sourceList, { ...sourceList, id: id(90), closed: true }],
+    [`/1/boards/${id(1)}/cards`]: [
+      sourceCard,
+      { ...sourceCard, id: id(91), closed: true },
+      { ...sourceCard, id: id(92), idList: id(90) },
+    ],
+  });
+  await reader.board(id(1));
+  expect((await reader.lists()).map((list) => list.id)).toEqual([sourceList.id]);
+  expect((await reader.cards()).map((card) => card.id)).toEqual([sourceCard.id]);
+  expect(calls.find((url) => url.pathname.endsWith('/lists'))?.searchParams.get('filter')).toBe(
+    'open',
+  );
+  expect(calls.find((url) => url.pathname.endsWith('/cards'))?.searchParams.get('filter')).toBe(
+    'visible',
+  );
+  const count = calls.length;
+  await expect(reader.attachments(id(91))).rejects.toThrow(ScopeError);
+  await expect(reader.comments(id(92))).rejects.toThrow(ScopeError);
+  expect(calls).toHaveLength(count);
+});
 
 test('reader blocks collection and unknown-card requests before making HTTP calls', async () => {
   const { reader, calls } = readerFixture();

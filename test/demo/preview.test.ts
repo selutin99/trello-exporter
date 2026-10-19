@@ -7,7 +7,7 @@ test('synthetic preview contains rich linked content and independently created a
   expect(capture.snapshot.cards).toHaveLength(6);
   expect(capture.snapshot.checklistItems).toHaveLength(19);
   expect(capture.snapshot.comments).toHaveLength(3);
-  expect(capture.snapshot.cards.some((card) => card.closed)).toBe(true);
+  expect(capture.snapshot.cards.some((card) => card.closed)).toBe(false);
   expect(new Set(capture.snapshot.cards.map((card) => card.id)).size).toBe(6);
   const original = demoFiles();
   for (const attachment of capture.uploads.values()) {

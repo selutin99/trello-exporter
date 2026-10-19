@@ -54,7 +54,7 @@ export class TestBoardApi {
   /**
    * Validates every list before extending the board allowlist
    * @param options - Optional cancellation signal
-   * @returns Active and archived lists with validated fields
+   * @returns Active lists with validated fields
    * @throws ApiError on invalid responses; ScopeError before board verification or on foreign ownership; the signal reason on cancellation
    */
   async readLists(options: RequestOptions = {}): Promise<BoardList[]> {
@@ -62,14 +62,14 @@ export class TestBoardApi {
       HttpMethod.Get,
       `/boards/${this.#scope.boardId}/lists`,
       {
-        query: { filter: 'all', fields: 'id,idBoard,name,closed,pos' },
+        query: { filter: 'open', fields: 'id,idBoard,name,closed,pos' },
         ...options,
       },
     );
     if (!Array.isArray(lists)) throw new ApiError(ApiErrorCode.InvalidResponse);
     const projected = (lists as unknown[]).map(projectList);
     this.#scope.rememberLists(projected);
-    return projected;
+    return projected.filter((list) => !list.closed);
   }
 
   /**

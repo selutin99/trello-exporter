@@ -11,7 +11,7 @@ export const board = {
 };
 
 export function loadPage(
-  page: 'probe' | 'connector' | 'authorize' | 'export',
+  page: 'probe' | 'connector' | 'authorize' | 'export' | 'privacy',
   query = 'board=TEST0001&clientId=public-client',
 ): void {
   const html = readFileSync(new NodeURL(`../../src/pages/${page}.html`, import.meta.url), 'utf8');

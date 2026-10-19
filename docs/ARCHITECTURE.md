@@ -67,7 +67,7 @@ range of the installed typescript-eslint release.
 `src/config/services.ts` is the single source for Trello API/board origins, the
 official SDK URL, connected-app management, and support links. Both API code and
 Vite HTML substitution use it. URL placeholders are resolved before serving or
-building HTML, including the privacy page that works without JavaScript. API
+building HTML, including the localized privacy page. API
 origins are not taken from query parameters or imported files: this prevents
 untrusted runtime settings from redirecting bearer tokens. Standard URL schemes
 and the SVG XML namespace are not deployment-specific service endpoints.
@@ -78,8 +78,11 @@ HTML, CSS, icons, and translations have separate directories. The connector
 imports the SVG, which receives a hashed asset filename during the build.
 Translations and diagnostic content use `textContent`, never HTML interpretation.
 The generated PNG brands the export page and the app listing; its generation
-prompt is recorded in [branding](BRANDING.md). The public data-handling page includes both product languages so it can be read
-without JavaScript. Code, comments, repository documentation, and community
+prompt is recorded in [branding](BRANDING.md). The public data-handling page renders one locale selected by the interface link,
+then a saved preference or browser language. Its messages live in locale resources.
+The export UI follows the SDK-managed `data-color-mode` attribute; standalone
+previews fall back to the operating system theme. Trello owns the modal header and
+close control; the connector uses the documented `accentColor` option for contrast. Code, comments, repository documentation, and community
 forms are in English; Russian is used for localized product content and deliberate
 Unicode fixtures.
 

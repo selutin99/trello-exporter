@@ -5,90 +5,22 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="referrer" content="no-referrer" />
     <title>trello-exporter · Data handling</title>
-    <link rel="stylesheet" href="../styles/probe.css" />
+    <link rel="stylesheet" href="../styles/privacy.css" />
+    <script src="../app/privacy.ts" type="module"></script>
   </head>
   <body>
     <main>
-      <h1>Data handling / Обработка данных</h1>
-      <p>trello-exporter · 2026-10-18</p>
-      <section lang="en">
-        <h2>English</h2>
-        <p>
-          trello-exporter prepares JSON snapshots and ZIP archives in your browser or Trello Desktop
-          window. The local sample preview uses synthetic data and makes no Trello API requests.
-        </p>
-        <p>
-          When opened as an authorized Trello Power-Up, export reads only the explicitly configured
-          board, including its lists, cards, checklists, comments, labels, member display
-          identities, custom fields, and attachment metadata. ZIP export downloads available
-          Trello-uploaded files. External attachment links are not fetched. This export interface
-          does not modify boards.
-        </p>
-        <p>
-          The project operates no backend receiving board content, exports, files, or tokens.
-          Prepared exports stay in memory until downloaded or the window is closed. Downloaded files
-          contain board content and may contain personal information; keep them private. Warnings
-          identify unavailable content. A capture spans an interval and is not an atomic backup.
-        </p>
-        <p>
-          Authorization is handled by Atlassian's official Power-Up SDK. Tokens stay in Trello
-          private plugin data and are sent only in Authorization headers to Trello. They are not
-          included in exports, reports, or application logs. Existing OAuth grants may include
-          workspace board read/write permissions, although export uses read-only requests.
-        </p>
-        <p>
-          The app may remember your language and a fixed authorization diagnostic stage in local
-          storage. Neither value contains tokens or authorization codes. No analytics or advertising
-          scripts are added. The official SDK is loaded from Atlassian's CDN; a configured static
-          host and Atlassian receive ordinary network request metadata under their own policies.
-        </p>
-        <p>
-          Use <a href="%CONNECTED_APPS_URL%" rel="noreferrer">Atlassian connected apps</a> to revoke
-          access. Local file deletion and OAuth revocation are separate actions. For support, use
-          <a href="%SUPPORT_ISSUES_URL%" rel="noreferrer">GitHub Issues</a> with synthetic examples
-          only.
-        </p>
-      </section>
-      <section lang="ru">
-        <h2>Русский</h2>
-        <p>
-          trello-exporter собирает JSON-снимки и ZIP-архивы в браузере или окне Trello Desktop.
-          Локальный пример использует синтетические данные и не обращается к Trello API.
-        </p>
-        <p>
-          При запуске из авторизованного Power-Up экспорт читает только явно настроенную доску:
-          списки, карточки, чек-листы, комментарии, метки, отображаемые сведения об участниках,
-          пользовательские поля и сведения о вложениях. В ZIP скачиваются доступные файлы,
-          загруженные в Trello. Внешние ссылки не обходятся. Интерфейс экспорта не изменяет доски.
-        </p>
-        <p>
-          У проекта нет сервера, принимающего содержимое досок, экспорты, файлы или токены.
-          Собранный экспорт остаётся в памяти до скачивания или закрытия окна. Скачанные файлы
-          содержат данные доски и могут содержать личную информацию; храните их приватно.
-          Недоступные данные перечисляются в предупреждениях. Снимок собирается за интервал времени
-          и не является атомарной резервной копией.
-        </p>
-        <p>
-          Авторизацией управляет официальный Power-Up SDK Atlassian. Токены хранятся в приватных
-          plugin data Trello и отправляются в заголовках Authorization только в Trello. В экспорт,
-          отчёты и журналы приложения они не включаются. Существующее OAuth-разрешение может
-          включать чтение и запись досок рабочего пространства, хотя экспорт выполняет только
-          чтение.
-        </p>
-        <p>
-          Приложение может запомнить язык и фиксированный диагностический этап авторизации в
-          локальном хранилище. Эти значения не содержат токенов и кодов авторизации. Аналитики и
-          рекламы нет. SDK загружается из CDN Atlassian; настроенный статический хостинг и Atlassian
-          получают обычные технические сведения о запросах согласно своим политикам.
-        </p>
-        <p>
-          Отозвать доступ можно в
-          <a href="%CONNECTED_APPS_URL%" rel="noreferrer">подключённых приложениях Atlassian</a>.
-          Удаление локальных файлов и отзыв доступа — отдельные действия. Для обратной связи
-          используйте <a href="%SUPPORT_ISSUES_URL%" rel="noreferrer">GitHub Issues</a> только с
-          синтетическими примерами.
-        </p>
-      </section>
+      <h1 data-i18n="privacy">Data handling</h1>
+      <p class="subtle">trello-exporter · <span data-i18n="privacyUpdated"></span></p>
+      <p data-i18n="privacyProcessing"></p>
+      <p data-i18n="privacyScope"></p>
+      <p data-i18n="privacyStorage"></p>
+      <p data-i18n="privacyAuthorization"></p>
+      <p data-i18n="privacyPreferences"></p>
+      <p data-i18n="privacyRevocation"></p>
+      <p><a href="%CONNECTED_APPS_URL%" rel="noreferrer" data-i18n="manageAccess"></a></p>
+      <p data-i18n="privacySupport"></p>
+      <p><a href="%SUPPORT_ISSUES_URL%" rel="noreferrer">GitHub Issues</a></p>
     </main>
   </body>
 </html>

@@ -1,6 +1,6 @@
 import type { SourceChecklist, SourceComment } from '../../src/api/schemas';
 import { BoardReader } from '../../src/api/reader';
-import type { ClientOptions } from '../../src/api/types';
+import type { ClientOptions } from '../../src/api';
 
 export const id = (value: number) => value.toString(16).padStart(24, '0');
 export const sourceBoard = {
@@ -33,7 +33,7 @@ export const sourceCard = {
   idList: id(2),
   name: 'Synthetic card',
   desc: '**Unicode** café · 東京 · ✓',
-  closed: true,
+  closed: false,
   pos: 100,
   start: null,
   due: '2026-11-20T12:00:00Z',

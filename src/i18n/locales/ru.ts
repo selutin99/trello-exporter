@@ -1,15 +1,17 @@
 import type { Messages } from '../types';
 import { exportRu } from './export-ru';
+import { privacyRu } from './privacy-ru';
 
 /** Russian UI messages, checked against the English keys */
 export const ru = {
   ...exportRu,
+  ...privacyRu,
   title: 'trello-exporter',
   badge: 'Диагностика',
   sampleText: 'Проверка локального файла / Test ✓',
   boardButton: 'trello-exporter',
   modalTitle: 'trello-exporter',
-  connectorReady: 'Коннектор подключён',
+  connectorReady: 'Коннектор подключен',
   connectorUnavailable: 'Коннектор недоступен',
   intro: 'Диагностика авторизации Trello и работы с локальными файлами',
   language: 'Язык',
@@ -19,7 +21,7 @@ export const ru = {
   download: 'Скачать пример JSON',
   choose: 'Выбрать синтетический тестовый файл',
   scan: 'Прочитать выбранный файл частями',
-  fileNote: 'Выбранный файл остаётся на устройстве и никуда не загружается',
+  fileNote: 'Выбранный файл остается на устройстве и никуда не загружается',
   apiTitle: 'Проверка Trello API',
   connect: 'Авторизоваться в Trello',
   inspect: 'Прочитать сведения о тестовой доске',
@@ -29,7 +31,7 @@ export const ru = {
   privacy: 'Обработка данных',
   standalone:
     'Здесь доступны проверки локальных файлов. Для авторизации через API откройте экран из зарегистрированного Power-Up внутри Trello',
-  report: 'Сохранить отчёт диагностики',
+  report: 'Сохранить отчет диагностики',
   results: 'Результаты проверки',
   cancel: 'Отменить текущую проверку',
   idle: 'Готово',
@@ -41,7 +43,7 @@ export const ru = {
   scanned: 'Чтение файла завершено',
   connected: 'Авторизация завершена',
   inspected: 'Тестовая доска проверена через REST API',
-  reported: 'Запрошено скачивание отчёта диагностики',
+  reported: 'Запрошено скачивание отчета диагностики',
   failed: 'Не удалось завершить проверку',
   callback: 'Завершаем авторизацию Trello…',
   callbackDone: 'Результат авторизации передан Power-Up. Это окно можно закрыть',

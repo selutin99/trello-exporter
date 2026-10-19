@@ -17,6 +17,7 @@ export interface PowerUpFrame {
     url: string;
     height: number;
     fullscreen: boolean;
+    accentColor: string;
   }): Promise<unknown>;
 }
 export interface PowerUpCapabilities {

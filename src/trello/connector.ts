@@ -17,6 +17,8 @@ try {
       url: probeUrl(window.location.href, settings),
       height: 780,
       fullscreen: false,
+      // Trello owns the header, close control, and their contrast on this background
+      accentColor: '#1D2125',
     });
   sdk.initialize(
     {

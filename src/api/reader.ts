@@ -37,6 +37,7 @@ export class BoardReader {
   readonly #scope: TestBoardScope;
   readonly #transport: Transport;
   readonly #cards = new Set<string>();
+  readonly #activeLists = new Set<string>();
   readonly #attachments = new Map<string, string>();
 
   /**
@@ -70,13 +71,15 @@ export class BoardReader {
   }
 
   /**
-   * Reads active and archived lists within the selected board
+   * Reads active lists within the selected board
    * @param options - Optional cancellation signal
    * @returns Validated list metadata
    * @throws ScopeError before verification; ApiError on an invalid response
    */
   async lists(options: RequestOptions = {}): Promise<BoardList[]> {
     const lists = await this.#api.readLists(options);
+    this.#activeLists.clear();
+    lists.forEach((list) => this.#activeLists.add(list.id));
     this.#scope.rememberLists(lists);
     return lists;
   }
@@ -84,7 +87,7 @@ export class BoardReader {
   /**
    * Reads cards, retaining an allowlist for subsequent card content requests
    * @param options - Optional cancellation signal
-   * @returns Cards including archived cards
+   * @returns Active cards in active lists, independent of Trello UI search filters
    * @throws ScopeError on foreign ownership; ApiError on invalid or repeated pages
    */
   async cards(options: RequestOptions = {}): Promise<SourceCard[]> {
@@ -92,7 +95,7 @@ export class BoardReader {
       `/boards/${this.#scope.boardId}/cards`,
       cardSchema,
       {
-        filter: 'all',
+        filter: 'visible',
         fields:
           'id,idBoard,idList,name,desc,pos,closed,start,due,dueComplete,idLabels,idMembers,cover',
       },
@@ -100,11 +103,12 @@ export class BoardReader {
     );
     for (const card of cards) {
       this.#scope.assertBoard(card.idBoard);
-      this.#scope.assertKnownList(card.idList);
     }
+    const active = cards.filter((card) => !card.closed && this.#activeLists.has(card.idList));
     this.#cards.clear();
-    cards.forEach((card) => this.#cards.add(card.id));
-    return cards;
+    this.#attachments.clear();
+    active.forEach((card) => this.#cards.add(card.id));
+    return active;
   }
 
   /**

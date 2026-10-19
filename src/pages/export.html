@@ -32,7 +32,6 @@
       </nav>
       <div id="demo-notice" class="notice" data-i18n="exportDemoNotice" hidden></div>
       <div class="hero">
-        <p class="eyebrow" data-i18n="exportEyebrow"></p>
         <h1 data-i18n="exportTitle"></h1>
         <p class="subtle" data-i18n="exportIntro"></p>
       </div>
@@ -77,10 +76,12 @@
           <li data-i18n="exportChecklists"></li>
           <li data-i18n="exportComments"></li>
           <li data-i18n="exportMetadata"></li>
-          <li data-i18n="exportArchived"></li>
-          <li data-i18n="exportAttachmentLabel"></li>
+          <li id="attachment-coverage">
+            <span id="attachment-mark" aria-hidden="true">✓</span>
+            <span data-i18n="exportAttachmentLabel"></span>
+            <span id="attachment-status" class="sr-only"></span>
+          </li>
         </ul>
-        <p class="subtle fine-print" data-i18n="exportNoHistory"></p>
       </section>
       <div id="operation" hidden>
         <p id="progress-label" role="status" aria-live="polite"></p>
@@ -119,7 +120,13 @@
         </p>
       </details>
       <footer>
-        <a href="./privacy.html" target="_blank" rel="noopener noreferrer" data-i18n="privacy"></a
+        <a
+          id="privacy-link"
+          href="./privacy.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-i18n="privacy"
+        ></a
         ><a
           href="%SUPPORT_ISSUES_URL%"
           target="_blank"

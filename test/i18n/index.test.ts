@@ -15,6 +15,9 @@ test('every page message exists in both locales and renders as text', () => {
   expect(document.querySelector('[data-i18n="inspect"]')?.textContent).toBe(
     translations.en.inspect,
   );
+  expect(document.querySelector('[data-i18n="privacy"]')?.getAttribute('href')).toBe(
+    './privacy.html?lang=en',
+  );
 });
 
 test('Russian and English cover the same interface keys', () => {
@@ -27,6 +30,8 @@ test('product resources have no trailing periods and export messages exist in bo
   for (const messages of Object.values(translations)) {
     for (const message of Object.values(messages)) expect(message.trim()).not.toMatch(/\.$/);
   }
+  for (const message of Object.values(translations.ru))
+    expect(message).not.toMatch(/[\u0451\u0401]/u);
   loadPage('export');
   for (const element of document.querySelectorAll<HTMLElement>('[data-i18n]')) {
     expect(Object.hasOwn(translations.en, element.dataset.i18n ?? '')).toBe(true);

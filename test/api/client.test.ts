@@ -60,7 +60,7 @@ test('no collection calls occur before board verification; tokens stay out of UR
   assert.ok(calls.every((call) => !call.url.includes(token)));
   assert.equal(calls[0]!.headers.Authorization, `Bearer ${token}`);
   assert.equal(calls[1]!.redirect, 'error');
-  assert.equal(new URL(calls[1]!.url).searchParams.get('filter'), 'all');
+  assert.equal(new URL(calls[1]!.url).searchParams.get('filter'), 'open');
 });
 
 test('writes are disabled by default, including for the test board', async () => {

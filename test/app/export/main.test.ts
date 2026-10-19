@@ -142,7 +142,7 @@ test('stored preferences and unavailable storage do not prevent standalone rende
   button('export').click();
   button('cancel').click();
   await vi.waitFor(() =>
-    expect(document.getElementById('status')?.textContent).toContain('отменён'),
+    expect(document.getElementById('status')?.textContent).toContain('отменен'),
   );
 });
 

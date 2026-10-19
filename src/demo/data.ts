@@ -82,16 +82,16 @@ export const demoCards = [
     closed: false,
   },
   {
-    name: 'Archived research notes',
+    name: 'Review the research notes',
     list: 2,
     label: 1,
-    description: 'Archived synthetic content must remain available in the snapshot.',
+    description: 'Active synthetic research notes for export testing.',
     items: ['Collect references', 'Summarize the findings'],
     completed: 2,
     comment: '',
     file: -1,
     due: null,
-    closed: true,
+    closed: false,
   },
 ];
 
