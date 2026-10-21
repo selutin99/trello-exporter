@@ -1,10 +1,22 @@
-import { RestoreStatus } from '../../src/restore/codes';
+import { Locale } from '../../src/i18n';
+import { buildMergePlan } from '../../src/restore/merge/planner';
+import { MergeChoice, MergeConflictKind } from '../../src/restore/merge/types';
+import type { ImportedBoard } from '../../src/import/read';
+import type { Snapshot } from '../../src/snapshot/types';
+import {
+  children,
+  seedRestoreRecords,
+  readRestoreRecord,
+  createRestoreRecord,
+  updateRestoreRecord,
+} from './restore-records';
+import { RestoreMode, RestoreStatus } from '../../src/restore/codes';
 import { RestoreApi } from '../../src/restore/api';
 import type { JournalStore, RestoreJournal } from '../../src/restore/types';
 import { id, sourceBoard } from './snapshot';
 
 export const workspaceId = id(700);
-export const targetId = id(701);
+export const targetId = sourceBoard.id;
 export interface RestoreCall {
   method: string;
   path: string;
@@ -45,18 +57,32 @@ export function restoreJournal(): RestoreJournal {
     skipped: [],
     warnings: [],
     error: null,
+    mode: RestoreMode.Merge,
+    sourceBoardId: sourceBoard.id,
+    bindings: {},
+    decisions: {},
+    planned: {},
+    commentParts: {},
+    commentLocale: Locale.English,
   };
 }
 
-export function restorationFixture(intercept?: (call: RestoreCall) => Response | undefined) {
+export function restorationFixture(
+  intercept?: (call: RestoreCall) => Response | undefined,
+  initial?: Snapshot,
+) {
   const records = new Map<string, Record<string, unknown>>();
   const calls: RestoreCall[] = [];
   const source = {
     ...sourceBoard,
+    desc: initial?.board.description ?? 'Synthetic preview board',
+    name: initial?.board.name ?? 'Studio launch',
     idOrganization: workspaceId,
     organization: { id: workspaceId, displayName: 'Synthetic test Workspace' },
   };
-  let sequence = 1000;
+  records.set(`/boards/${targetId}`, source);
+  if (initial) seedRestoreRecords(records, initial);
+  let sequence = 10000;
   const fetchImpl: typeof fetch = async (input, init) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
     if (url.origin !== 'https://api.trello.com') throw new Error('Foreign API origin');
@@ -77,38 +103,18 @@ export function restorationFixture(intercept?: (call: RestoreCall) => Response |
     const interrupted = intercept?.(call);
     if (interrupted) return interrupted;
     let result: unknown;
+    if (call.path === '/boards' || call.method === 'DELETE')
+      throw new Error('Forbidden fixture mutation');
     if (call.method === 'GET') {
-      if ([`/boards/${sourceBoard.id}`, '/boards/TEST0001'].includes(call.path)) result = source;
-      else result = records.get(call.path);
-    } else if (call.path === '/boards') {
-      result = {
-        id: targetId,
-        shortLink: 'NEW00001',
-        idOrganization: workspaceId,
-        prefs: { permissionLevel: 'private' },
-        closed: false,
-        name: (body as Record<string, unknown>).name,
-      };
-      records.set(`/boards/${targetId}`, result as Record<string, unknown>);
-    } else if (call.method === 'PUT') result = {};
-    else {
-      const created = id(sequence++);
-      const data = body instanceof FormData ? { name: body.get('name') } : body;
-      const type = call.path.split('/').at(-1)!;
-      const parent = call.path.split('/')[2];
-      const record: Record<string, unknown> = { ...data, id: created, idBoard: targetId };
-      if (type === 'checklists') record.idCard = parent;
-      if (type === 'customFields') {
-        record.idModel = targetId;
-        const options = JSON.parse((data as { options?: string }).options ?? '[]') as Record<
-          string,
-          unknown
-        >[];
-        record.options = options.map((option) => ({ ...option, id: id(sequence++) }));
+      if (call.path === '/boards/TEST0001') result = source;
+      else result = readRestoreRecord(records, call.path);
+      if (Array.isArray(result)) {
+        const before = url.searchParams.get('before');
+        if (before) result = result.filter((item: { id: string }) => item.id < before);
       }
-      records.set(`/${type}/${created}`, record);
-      result = record;
-    }
+    } else if (call.method === 'PUT')
+      result = updateRestoreRecord(records, call.path, body as Record<string, unknown>);
+    else result = createRestoreRecord(records, call.path, body, id(sequence++));
     if (result === undefined)
       throw new Error(`Unexpected fixture request: ${call.method} ${call.path}`);
     return new Response(JSON.stringify(result));
@@ -120,5 +126,24 @@ export function restorationFixture(intercept?: (call: RestoreCall) => Response |
     pauseImpl: async () => {},
   });
   const store = new MemoryJournal();
-  return { api, store, records, calls, fetchImpl };
+  const plan = async (input: ImportedBoard, choice = MergeChoice.Snapshot) => {
+    const context = await api.context(sourceBoard.id);
+    const current = await api.snapshot(context);
+    const previous = store.read();
+    let result = buildMergePlan(input, current, previous?.decisions ?? {}, previous);
+    const decisions = { ...result.decisions };
+    for (const conflict of result.conflicts)
+      if (conflict.kind === MergeConflictKind.Value) decisions[conflict.key] = choice;
+    result = buildMergePlan(input, current, decisions, previous);
+    return result;
+  };
+  return {
+    api,
+    store,
+    records,
+    calls,
+    fetchImpl,
+    plan,
+    children: (path: string) => children(records, path),
+  };
 }

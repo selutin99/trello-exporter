@@ -1,7 +1,7 @@
 import { Locale } from '../../src/i18n/types';
 // @vitest-environment happy-dom
 import { beforeEach, expect, test, vi } from 'vitest';
-import { LocalJournalStore, canResumeJournal } from '../../src/restore/journal';
+import { LocalJournalStore, canResumeJournal, hasUncertainWrite } from '../../src/restore/journal';
 import { RestoreStatus, RestoreError } from '../../src/restore/codes';
 import { restoreJournal, workspaceId } from '../helpers/restore';
 import { sourceBoard } from '../helpers/snapshot';
@@ -59,6 +59,7 @@ test('continuation requires the same file and live context, an existing target, 
 
 test('comment locale survives local storage and legacy comment progress cannot be resumed by guessing', () => {
   const journal = restoreJournal();
+  delete journal.commentLocale;
   journal.completed['comments/card-0'] = sourceBoard.id;
   const context = { boardId: sourceBoard.id, workspaceId, workspaceName: 'Synthetic Workspace' };
   expect(canResumeJournal(journal, journal.checksum, context)).toBe(false);
@@ -72,4 +73,17 @@ test('comment locale survives local storage and legacy comment progress cannot b
   delete journal.commentLocale;
   journal.skipped.push('comments/card-0');
   expect(canResumeJournal(journal, journal.checksum, context)).toBe(false);
+});
+
+test('pending or unknown operations stay blocked even in legacy reports without a current target', () => {
+  expect(hasUncertainWrite(null)).toBe(false);
+  const journal = restoreJournal();
+  expect(hasUncertainWrite(journal)).toBe(false);
+  delete journal.mode;
+  journal.target = null;
+  journal.pending = 'cards/uncertain';
+  expect(hasUncertainWrite(journal)).toBe(true);
+  journal.pending = null;
+  journal.status = RestoreStatus.Unknown;
+  expect(hasUncertainWrite(journal)).toBe(true);
 });

@@ -1,4 +1,5 @@
 import type { SourceChecklist, SourceComment } from '../../src/api/schemas';
+import { CheckItemState, TrelloActionType } from '../../src/api/types';
 import { BoardReader } from '../../src/api/reader';
 import type { ClientOptions } from '../../src/api';
 
@@ -48,13 +49,20 @@ export const sourceChecklist: SourceChecklist = {
   name: 'Tasks',
   pos: 1,
   checkItems: [
-    { id: id(8), name: 'Done ✓', pos: 2, state: 'complete', due: null, idMember: id(6) },
-    { id: id(9), name: 'Next', pos: 1, state: 'incomplete' },
+    {
+      id: id(8),
+      name: 'Done ✓',
+      pos: 2,
+      state: CheckItemState.Complete,
+      due: null,
+      idMember: id(6),
+    },
+    { id: id(9), name: 'Next', pos: 1, state: CheckItemState.Incomplete },
   ],
 };
 export const sourceComment: SourceComment = {
   id: id(10),
-  type: 'commentCard',
+  type: TrelloActionType.Comment,
   date: '2026-10-18T09:00:00Z',
   data: { text: 'A synthetic comment', board: { id: id(1) }, card: { id: id(3) } },
   memberCreator: { id: id(6), fullName: 'Demo reviewer' },

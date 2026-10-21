@@ -110,19 +110,40 @@ a {
   color: var(--accent);
   font-weight: 600;
 }
-.restore-file,
-.restore-name {
+.restore-file {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin: 18px 0;
 }
-.restore-name input {
+.merge-conflict {
   border: 1px solid var(--border);
-  border-radius: 7px;
-  background: var(--background);
-  color: inherit;
+  border-radius: 8px;
+  background: var(--surface);
+  margin: 14px 0;
+  padding: 14px;
+}
+.merge-conflict h4 {
+  margin: 0 0 12px;
+  overflow-wrap: anywhere;
+}
+.merge-conflict pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 200px;
+  overflow: auto;
   padding: 10px;
+  background: var(--background);
+  border-radius: 5px;
+}
+.merge-conflict label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.merge-conflict select {
+  width: 100%;
+  min-width: 0;
 }
 .restore-confirm {
   display: flex;

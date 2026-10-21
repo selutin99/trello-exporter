@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440" viewBox="0 0 1200 440" fill="none" role="img" aria-labelledby="title description">
+  <title id="title">trello-exporter — Your board, saved</title>
+  <desc id="description">A synthetic board becomes a portable snapshot, ready to merge into the current Trello board</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1200" y2="440" gradientUnits="userSpaceOnUse"><stop stop-color="#101C30"/><stop offset="1" stop-color="#122D35"/></linearGradient>
+    <linearGradient id="accent" x1="48" y1="45" x2="118" y2="115" gradientUnits="userSpaceOnUse"><stop stop-color="#7DD3FC"/><stop offset="1" stop-color="#34D399"/></linearGradient>
+    <linearGradient id="file" x1="915" y1="190" x2="1070" y2="370" gradientUnits="userSpaceOnUse"><stop stop-color="#2DD4BF"/><stop offset="1" stop-color="#38BDF8"/></linearGradient>
+  </defs>
+  <rect width="1200" height="440" rx="28" fill="url(#background)"/>
+  <circle cx="1130" cy="40" r="220" fill="#38BDF8" opacity=".04"/>
+  <circle cx="60" cy="435" r="270" fill="#34D399" opacity=".035"/>
+  <rect x="48" y="42" width="64" height="64" rx="18" fill="url(#accent)"/>
+  <rect x="62" y="57" width="15" height="30" rx="4" fill="#102A36"/>
+  <rect x="83" y="57" width="15" height="20" rx="4" fill="#102A36"/>
+  <path d="m82 89 6 6 12-13" stroke="#102A36" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+    <text x="134" y="75" fill="#F0F9FF" font-size="30" font-weight="700" letter-spacing="-.7">trello-exporter</text>
+    <text x="135" y="101" fill="#94B1C3" font-size="15">OPEN SOURCE · LOCAL PROCESSING · RU / EN</text>
+    <text x="48" y="170" fill="#F0F9FF" font-size="43" font-weight="700" letter-spacing="-1.3">Your board, saved</text>
+    <text x="49" y="204" fill="#AEC6D5" font-size="19">Capture the present · Review the differences · Keep moving</text>
+    <rect x="49" y="242" width="605" height="153" rx="16" fill="#0E1C2C" stroke="#304658"/>
+    <circle cx="68" cy="260" r="3" fill="#5B7B90"/><circle cx="79" cy="260" r="3" fill="#5B7B90"/><circle cx="90" cy="260" r="3" fill="#5B7B90"/>
+    <text x="109" y="265" fill="#9BB6C7" font-size="11">STUDIO LAUNCH · SYNTHETIC BOARD</text>
+    <g fill="#1D3143"><rect x="65" y="279" width="180" height="100" rx="9"/><rect x="259" y="279" width="180" height="100" rx="9"/><rect x="453" y="279" width="184" height="100" rx="9"/></g>
+    <text x="77" y="300" fill="#CBDEE9" font-size="12" font-weight="600">Ideas</text><text x="271" y="300" fill="#CBDEE9" font-size="12" font-weight="600">In progress</text><text x="465" y="300" fill="#CBDEE9" font-size="12" font-weight="600">Ready</text>
+    <g fill="#2A4357"><rect x="77" y="310" width="156" height="28" rx="5"/><rect x="77" y="345" width="156" height="23" rx="5"/><rect x="271" y="310" width="156" height="49" rx="5"/><rect x="465" y="310" width="160" height="28" rx="5"/></g>
+    <rect x="85" y="316" width="28" height="4" rx="2" fill="#FBBF24"/><rect x="279" y="316" width="32" height="4" rx="2" fill="#7DD3FC"/><rect x="473" y="316" width="32" height="4" rx="2" fill="#34D399"/>
+    <text x="85" y="331" fill="#DBEAF2" font-size="10">Sketch a new feature</text><text x="85" y="360" fill="#DBEAF2" font-size="10">Collect feedback</text><text x="279" y="332" fill="#DBEAF2" font-size="10">Prepare the release</text><text x="279" y="349" fill="#8EB3C9" font-size="9">☑ 3 / 4 · 2 files</text><text x="473" y="331" fill="#DBEAF2" font-size="10">Share the plan</text>
+    <path d="M682 310h110m-12-12 12 12-12 12" stroke="#68DCCB" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="697" y="290" fill="#8FB5C7" font-size="11">SNAPSHOT</text>
+    <path d="M842 219a14 14 0 0 1 14-14h111l38 38v113a14 14 0 0 1-14 14H856a14 14 0 0 1-14-14Z" fill="url(#file)"/>
+    <path d="M967 205v28a10 10 0 0 0 10 10h28" fill="#CFFAFE" opacity=".65"/>
+    <text x="866" y="290" fill="#0D3743" font-size="22" font-weight="750">{ snapshot }</text>
+    <rect x="866" y="310" width="115" height="3" rx="1.5" fill="#116578" opacity=".5"/><rect x="866" y="321" width="88" height="3" rx="1.5" fill="#116578" opacity=".5"/>
+    <rect x="939" y="339" width="181" height="43" rx="12" fill="#173E42" stroke="#397E74"/>
+    <circle cx="960" cy="360" r="10" fill="#34D399"/><path d="m956 360 3 3 5-6" stroke="#123832" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="980" y="365" fill="#C0F8E4" font-size="13" font-weight="600">Ready to merge</text>
+  </g>
+</svg>

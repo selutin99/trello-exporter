@@ -6,8 +6,9 @@ import { RestoreStatus } from '../../../src/restore/codes';
 import { createSyntheticCapture } from '../../helpers/board-capture';
 import { jsonBytes } from '../../../src/snapshot/archive';
 import { loadPage, installSdk, button } from '../../helpers/browser';
-import { restorationFixture } from '../../helpers/restore';
-import { sourceBoard } from '../../helpers/snapshot';
+import { restorationFixture, restoreJournal } from '../../helpers/restore';
+import { id, sourceBoard } from '../../helpers/snapshot';
+import { LocalJournalStore } from '../../../src/restore/journal';
 
 const downloads = vi.hoisted(() => ({ downloadJson: vi.fn(), downloadBlob: vi.fn() }));
 vi.mock('../../../src/app/download', () => downloads);
@@ -64,7 +65,7 @@ test('standalone import previews a valid file, switches language, and never enab
   (document.getElementById('restore-confirm') as HTMLInputElement).click();
   expect(button('restore-start').disabled).toBe(true);
   language(Locale.English);
-  expect(document.getElementById('restore-status')?.textContent).toContain('Review the plan');
+  expect(document.getElementById('restore-status')?.textContent).toContain('destination board');
   button('export-tab').click();
   expect(document.getElementById('export-panel')?.hidden).toBe(false);
   expect(fixture.calls).toHaveLength(0);
@@ -80,7 +81,7 @@ test('standalone import previews a valid file, switches language, and never enab
   ).toThrow('Missing restore control');
 });
 
-test('an explicit confirmation restores to a separate board and offers the report', async () => {
+test('an explicit confirmation applies to the current board and offers the report', async () => {
   const { ui, client, fixture } = setup(true);
   button('restore-report').click();
   button('restore-start').click();
@@ -99,6 +100,30 @@ test('an explicit confirmation restores to a separate board and offers the repor
   );
   button('restore-report').click();
   expect(downloads.downloadJson).toHaveBeenCalled();
+});
+
+test('an uncertain operation on another board disables applying the reviewed input', async () => {
+  const journal = restoreJournal();
+  journal.target = {
+    id: id(777),
+    name: 'Other synthetic board',
+    workspaceId: journal.workspaceId,
+    url: 'https://trello.com/b/OTHER001',
+  };
+  journal.sourceContextId = id(777);
+  journal.status = RestoreStatus.Unknown;
+  new LocalJournalStore(localStorage).save(journal);
+  const { ui, fixture, client, language } = setup(true);
+  choose();
+  await ready(ui);
+  expect(ui.model.plan).not.toBeNull();
+  language(Locale.English);
+  expect(document.getElementById('restore-status')?.textContent).toContain('unknown');
+  (document.getElementById('restore-confirm') as HTMLInputElement).click();
+  expect(button('restore-start').disabled).toBe(true);
+  button('restore-start').click();
+  expect(client.authorize).not.toHaveBeenCalled();
+  expect(fixture.calls.every((call) => call.method === 'GET')).toBe(true);
 });
 
 test('diagnostic reports and invalid files display a safe error without API calls', async () => {
@@ -127,7 +152,7 @@ test('missing authorization allows connection, and a failed consent request stay
   expect(ui.model.context).not.toBeNull();
 });
 
-test('known write failure can continue the same local operation without duplicating the board', async () => {
+test('known write failure can continue the same local operation without duplicating content', async () => {
   let blocked = true;
   const fixture = restorationFixture((call) =>
     call.path === '/cards' && call.method === 'POST' && blocked
@@ -143,13 +168,15 @@ test('known write failure can continue the same local operation without duplicat
   expect(ui.model.report?.status).toBe(RestoreStatus.Failed);
   expect(button('restore-resume').hidden).toBe(false);
   blocked = false;
+  button('restore-analyze').click();
+  await ready(ui);
   (document.getElementById('restore-confirm') as HTMLInputElement).click();
   button('restore-resume').click();
   await ready(ui);
   expect(ui.model.report?.status).toBe(RestoreStatus.Partial);
   expect(
     fixture.calls.filter((call) => call.path === '/boards' && call.method === 'POST'),
-  ).toHaveLength(1);
+  ).toHaveLength(0);
 });
 
 test('storage errors and cancellation cannot produce hidden background writes', async () => {
@@ -187,4 +214,92 @@ test('storage errors and cancellation cannot produce hidden background writes', 
   finish?.(original);
   await ready(ui);
   expect(document.getElementById('restore-status')?.textContent).toContain('отменено');
+});
+
+test('conflict choices are mandatory, safe to display, localized, and invalidate confirmation', async () => {
+  const snapshot = createSyntheticCapture().snapshot;
+  const fixture = restorationFixture(undefined, snapshot);
+  const card = snapshot.cards[0]!;
+  fixture.records.get(`/cards/${card.id}`)!.name = '<img src=x onerror=alert(1)>';
+  fixture.records.get(`/cards/${card.id}`)!.desc = 'Changed description';
+  const { ui, language } = setup(true, fixture);
+  choose(new File([jsonBytes(snapshot)], 'snapshot.json'));
+  await ready(ui);
+  const confirmation = document.getElementById('restore-confirm') as HTMLInputElement;
+  confirmation.click();
+  expect(ui.model.plan?.unresolved).toBe(2);
+  expect(button('restore-start').disabled).toBe(true);
+  expect(document.querySelector('#restore-conflicts img')).toBeNull();
+  expect(document.getElementById('restore-conflicts')?.textContent).toContain('<img');
+  language(Locale.English);
+  expect(document.getElementById('restore-conflicts')?.textContent).toContain('Current board');
+  const select = document.querySelector<HTMLSelectElement>('#restore-conflicts select')!;
+  select.focus();
+  select.value = 'keep-current';
+  select.dispatchEvent(new Event('change', { bubbles: true }));
+  expect(confirmation.checked).toBe(false);
+  expect((document.activeElement as HTMLSelectElement).dataset.conflictKey).toBe(
+    select.dataset.conflictKey,
+  );
+  button('restore-use-all').click();
+  expect(ui.model.plan?.unresolved).toBe(0);
+  expect(button('restore-start').disabled).toBe(true);
+  button('restore-keep-all').click();
+  expect(ui.model.plan?.actions).toHaveLength(0);
+  confirmation.click();
+  button('restore-start').click();
+  await ready(ui);
+  expect(ui.model.report?.status).toBe(RestoreStatus.Complete);
+  expect(fixture.calls.every((call) => call.method === 'GET')).toBe(true);
+});
+
+test('identity choices are explicit and do not get resolved by bulk value preferences', async () => {
+  const snapshot = createSyntheticCapture().snapshot;
+  const fixture = restorationFixture(undefined, snapshot);
+  const original = snapshot.lists[0]!;
+  const replacement = 'b'.repeat(24);
+  fixture.records.delete(`/lists/${original.id}`);
+  fixture.records.set(`/lists/${replacement}`, {
+    id: replacement,
+    name: original.name,
+    closed: false,
+    idBoard: sourceBoard.id,
+    pos: 0,
+  });
+  for (const card of fixture.children('/cards'))
+    if (card.idList === original.id) card.idList = replacement;
+  const { ui } = setup(true, fixture);
+  choose(new File([jsonBytes(snapshot)], 'snapshot.json'));
+  await ready(ui);
+  button('restore-use-all').click();
+  expect(ui.model.plan?.unresolved).toBe(1);
+  const select = document.querySelector<HTMLSelectElement>('#restore-conflicts select')!;
+  expect([...select.options].map((option) => option.value)).toEqual([
+    '',
+    replacement,
+    'create-separate',
+    'skip-snapshot',
+  ]);
+  select.value = replacement;
+  select.dispatchEvent(new Event('change', { bubbles: true }));
+  expect(ui.model.plan?.unresolved).toBe(0);
+  expect(ui.model.plan?.actions).toHaveLength(0);
+});
+
+test('board changes after review require a fresh comparison and new confirmation', async () => {
+  const { ui, fixture } = setup(true);
+  choose();
+  await ready(ui);
+  fixture.records.get(`/boards/${sourceBoard.id}`)!.desc = 'Changed after review';
+  const confirmation = document.getElementById('restore-confirm') as HTMLInputElement;
+  confirmation.click();
+  button('restore-start').click();
+  await ready(ui);
+  expect(ui.model.plan).toBeNull();
+  expect(document.getElementById('restore-status')?.textContent).toContain('изменилась');
+  expect(fixture.calls.every((call) => call.method === 'GET')).toBe(true);
+  button('restore-analyze').click();
+  await ready(ui);
+  expect(confirmation.checked).toBe(false);
+  expect(ui.model.plan?.unresolved).toBe(1);
 });

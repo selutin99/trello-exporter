@@ -1,7 +1,6 @@
-import { expect, test, vi } from 'vitest';
-import { CoverageStatus } from '../../src/snapshot/codes';
+import { assert, expect, test, vi } from 'vitest';
 import { ApiErrorCode } from '../../src/shared/error-codes';
-import { commentSummaries } from '../../src/restore/comments';
+import { attributedComment } from '../../src/restore/comments';
 import { RestoreEngine } from '../../src/restore/engine';
 import {
   RestoreResource,
@@ -12,10 +11,15 @@ import {
 import { createSyntheticCapture, syntheticFileReader } from '../helpers/board-capture';
 import { buildArchive, jsonBytes } from '../../src/snapshot/archive';
 import { readImport } from '../../src/import/read';
+import type { ImportedBoard } from '../../src/import/read';
 import { Locale } from '../../src/i18n';
-import { MemoryJournal, restorationFixture, targetId } from '../helpers/restore';
-import { sourceBoard } from '../helpers/snapshot';
+import { MemoryJournal, restorationFixture, restoreJournal, targetId } from '../helpers/restore';
+import { sourceBoard, id } from '../helpers/snapshot';
+import type { RestoreOptions } from '../../src/restore/types';
+import { buildMergePlan } from '../../src/restore/merge/planner';
+import { MergeChoice, MergeField } from '../../src/restore/merge/types';
 
+type Fixture = ReturnType<typeof restorationFixture>;
 async function imported(zip = false) {
   const capture = createSyntheticCapture();
   return readImport(
@@ -24,31 +28,90 @@ async function imported(zip = false) {
       : new Blob([jsonBytes(capture.snapshot)]),
   );
 }
-const options = { name: 'Restored synthetic board', locale: Locale.English };
+async function run(
+  fixture: Fixture,
+  input: ImportedBoard,
+  options: Partial<RestoreOptions> = {},
+  store = fixture.store,
+) {
+  const context = await fixture.api.context(sourceBoard.id);
+  const plan = await fixture.plan(input);
+  return new RestoreEngine(fixture.api, store).run(input, context, {
+    locale: Locale.English,
+    plan,
+    ...options,
+  });
+}
+const writes = (fixture: Fixture) => fixture.calls.filter((call) => call.method !== 'GET');
 
-test('JSON and ZIP restore content only into a new private board with mapped IDs', async () => {
-  for (const zip of [false, true]) {
+test.each([false, true])(
+  'JSON/ZIP add missing content to the current board without creating a board: zip=%s',
+  async (zip) => {
     const fixture = restorationFixture();
     const input = await imported(zip);
-    const engine = new RestoreEngine(fixture.api, fixture.store);
-    const report = await engine.run(input, await fixture.api.context(sourceBoard.id), options);
-    expect(report.target?.id).toBe(targetId);
+    const report = await run(fixture, input);
+    expect(report.target?.id).toBe(sourceBoard.id);
     expect(report.status).toBe(RestoreStatus.Partial);
     expect(Object.keys(report.completed).filter((key) => key.startsWith('cards/'))).toHaveLength(6);
     expect(
       Object.keys(report.completed).filter((key) => key.startsWith('checkItems/')),
     ).toHaveLength(19);
     expect(report.pending).toBeNull();
-    const writes = fixture.calls.filter((call) => call.method !== 'GET');
-    expect(writes.some((call) => call.path.includes(sourceBoard.id))).toBe(false);
-    expect(writes.filter((call) => call.path.endsWith('/attachments'))).toHaveLength(zip ? 3 : 0);
-    for (const call of writes.filter((call) => call.body instanceof FormData))
+    expect(
+      writes(fixture).some((call) => call.path === '/boards' || call.method === 'DELETE'),
+    ).toBe(false);
+    expect(writes(fixture).filter((call) => call.path.endsWith('/attachments'))).toHaveLength(
+      zip ? 3 : 0,
+    );
+    for (const call of writes(fixture).filter((call) => call.body instanceof FormData))
       expect(call.headers.has('Content-Type')).toBe(false);
     expect(JSON.stringify(report)).not.toContain('synthetic-token');
-  }
+  },
+);
+
+test('loading the exact same snapshot again reuses IDs and performs no duplicate writes', async () => {
+  const input = await imported(true);
+  const fixture = restorationFixture(undefined, input.snapshot);
+  expect((await fixture.plan(input)).actions).toHaveLength(0);
+  expect((await run(fixture, input)).status).toBe(RestoreStatus.Complete);
+  expect(writes(fixture)).toHaveLength(0);
+  expect(fixture.children('/cards')).toHaveLength(input.snapshot.cards.length);
 });
 
-test('an export without fidelity limitations can finish completely', async () => {
+test('a second import into another board reuses journal mappings and comment chunks', async () => {
+  const input = await imported(true);
+  input.snapshot.board.id = id(999);
+  const fixture = restorationFixture();
+  await run(fixture, input);
+  const before = writes(fixture).length;
+  const plan = await fixture.plan(input);
+  expect(plan.unresolved).toBe(0);
+  expect(plan.actions).toHaveLength(0);
+  await run(fixture, input);
+  await run(fixture, input);
+  expect(writes(fixture)).toHaveLength(before);
+});
+
+test('selected fields change while current-only cards and board identity remain intact', async () => {
+  const input = await imported();
+  const fixture = restorationFixture(undefined, input.snapshot);
+  const card = input.snapshot.cards[0]!;
+  fixture.records.get(`/cards/${card.id}`)!.name = 'Newer current name';
+  fixture.records.set(`/cards/${id(980)}`, {
+    ...fixture.records.get(`/cards/${card.id}`),
+    id: id(980),
+    name: 'Current-only',
+  });
+  const plan = await fixture.plan(input);
+  expect(plan.actions).toHaveLength(1);
+  const report = await run(fixture, input, { plan });
+  expect(report.status).toBe(RestoreStatus.Partial);
+  expect(fixture.records.get(`/cards/${card.id}`)?.name).toBe(card.name);
+  expect(fixture.records.get(`/cards/${id(980)}`)?.name).toBe('Current-only');
+  expect(writes(fixture).map((call) => call.path)).toEqual([`/cards/${card.id}`]);
+});
+
+test('a complete supported snapshot can finish with no fidelity warnings', async () => {
   const input = await imported();
   input.snapshot.cards.forEach((card) => {
     card.memberIds = [];
@@ -56,16 +119,29 @@ test('an export without fidelity limitations can finish completely', async () =>
   });
   input.snapshot.comments = [];
   input.snapshot.attachments = [];
-  const fixture = restorationFixture();
-  const report = await new RestoreEngine(fixture.api, fixture.store).run(
-    input,
-    await fixture.api.context(sourceBoard.id),
-    options,
-  );
-  expect(report.status).toBe(RestoreStatus.Complete);
+  expect((await run(restorationFixture(), input)).status).toBe(RestoreStatus.Complete);
 });
 
-test('known failures retain the board and resume without creating duplicate objects', async () => {
+test('unresolved and stale plans stop before the first write', async () => {
+  const fixture = restorationFixture();
+  const input = await imported();
+  const context = await fixture.api.context(sourceBoard.id);
+  const current = await fixture.api.snapshot(context);
+  current.board.description = 'Divergent';
+  const unresolved = buildMergePlan(input, current);
+  const engine = new RestoreEngine(fixture.api, fixture.store);
+  await expect(
+    engine.run(input, context, { locale: Locale.English, plan: unresolved }),
+  ).rejects.toMatchObject({ code: RestoreErrorCode.InvalidPlan });
+  const plan = await fixture.plan(input);
+  fixture.records.get(`/boards/${targetId}`)!.desc = 'Changed after review';
+  await expect(engine.run(input, context, { locale: Locale.English, plan })).rejects.toMatchObject({
+    code: RestoreErrorCode.PlanStale,
+  });
+  expect(writes(fixture)).toHaveLength(0);
+});
+
+test('known failures resume the same operation without duplicating previously created objects', async () => {
   let blocked = true;
   const fixture = restorationFixture((call) =>
     call.method === 'POST' && call.path === '/cards' && blocked
@@ -73,198 +149,120 @@ test('known failures retain the board and resume without creating duplicate obje
       : undefined,
   );
   const input = await imported();
-  const engine = new RestoreEngine(fixture.api, fixture.store);
-  const context = await fixture.api.context(sourceBoard.id);
-  const failed = await engine.run(input, context, options);
+  const failed = await run(fixture, input);
   expect(failed.status).toBe(RestoreStatus.Failed);
-  expect(failed.target?.id).toBe(targetId);
   blocked = false;
-  const resumed = await engine.run(input, context, { ...options, resume: true });
+  const resumed = await run(fixture, input, { resume: true });
   expect(resumed.status).toBe(RestoreStatus.Partial);
-  expect(
-    fixture.calls.filter((call) => call.path === '/boards' && call.method === 'POST'),
-  ).toHaveLength(1);
-  expect(
-    fixture.calls.filter((call) => call.path.endsWith('/lists') && call.method === 'POST'),
-  ).toHaveLength(3);
+  expect(fixture.children('/lists')).toHaveLength(3);
+  expect(fixture.children('/cards')).toHaveLength(6);
+  expect(writes(fixture).filter((call) => call.path.endsWith('/lists'))).toHaveLength(3);
 });
 
-test('uncertain POST results are journalled and cannot be retried by continuation', async () => {
-  const fixture = restorationFixture((call) =>
-    call.method === 'POST' && call.path === '/cards'
-      ? new Response('', { status: 503 })
-      : undefined,
-  );
-  const engine = new RestoreEngine(fixture.api, fixture.store);
-  const input = await imported();
-  const context = await fixture.api.context(sourceBoard.id);
-  const report = await engine.run(input, context, options);
-  expect(report.status).toBe(RestoreStatus.Unknown);
-  expect(report.pending).toMatch(/^cards\//);
-  await expect(engine.run(input, context, { ...options, resume: true })).rejects.toMatchObject({
-    code: RestoreErrorCode.UnknownWrite,
-  });
-  expect(
-    fixture.calls.filter((call) => call.path === '/cards' && call.method === 'POST'),
-  ).toHaveLength(1);
-});
+test.each([408, 503])(
+  'uncertain write %s is never retried and blocks both new and resumed operations',
+  async (status) => {
+    const fixture = restorationFixture((call) =>
+      call.method === 'POST' && call.path === '/cards' ? new Response('', { status }) : undefined,
+    );
+    const input = await imported();
+    const report = await run(fixture, input);
+    expect(report.status).toBe(RestoreStatus.Unknown);
+    expect(report.pending).toMatch(/^cards\//);
+    for (const resume of [false, true])
+      await expect(run(fixture, input, { resume })).rejects.toMatchObject({
+        code: RestoreErrorCode.UnknownWrite,
+      });
+    expect(writes(fixture).filter((call) => call.path === '/cards')).toHaveLength(1);
+  },
+);
 
-test('optional destination restrictions produce explicit skipped content and partial status', async () => {
+test('optional destination restrictions explicitly omit fields and their dependent content', async () => {
   const fixture = restorationFixture((call) =>
     call.method === 'POST' && call.path === '/customFields'
       ? new Response('', { status: 403 })
       : undefined,
   );
-  const report = await new RestoreEngine(fixture.api, fixture.store).run(
-    await imported(),
-    await fixture.api.context(sourceBoard.id),
-    options,
-  );
+  const report = await run(fixture, await imported());
   expect(report.status).toBe(RestoreStatus.Partial);
   expect(report.warnings).toContain(RestoreWarning.Unsupported);
   expect(report.skipped.some((key) => key.startsWith(RestoreResource.Field))).toBe(true);
+  expect(writes(fixture).some((call) => call.path.includes('/customField/'))).toBe(false);
 });
 
-test('unavailable storage and mismatched recovery input cannot create a board', async () => {
+test('storage failure before writes and mismatched continuation cannot mutate the board', async () => {
   const fixture = restorationFixture();
   const input = await imported();
-  const context = await fixture.api.context(sourceBoard.id);
   const store = new MemoryJournal();
   store.save = () => {
     throw new Error('storage blocked');
   };
-  await expect(
-    new RestoreEngine(fixture.api, store).run(input, context, options),
-  ).rejects.toThrow();
-  await expect(
-    new RestoreEngine(fixture.api, fixture.store).run(input, context, { ...options, resume: true }),
-  ).rejects.toThrow();
-  await expect(
-    new RestoreEngine(fixture.api, fixture.store).run(input, context, { ...options, name: ' ' }),
-  ).rejects.toThrow();
-  expect(fixture.calls.every((call) => call.method === 'GET')).toBe(true);
+  await expect(run(fixture, input, {}, store)).rejects.toThrow();
+  await expect(run(fixture, input, { resume: true })).rejects.toMatchObject({
+    code: RestoreErrorCode.JournalMismatch,
+  });
+  expect(writes(fixture)).toHaveLength(0);
 });
 
-test('cancellation keeps created content and stores a safe resumable checkpoint', async () => {
+test('cancellation before dispatch stores a known checkpoint without deleting content', async () => {
   const active = new AbortController();
   const fixture = restorationFixture();
-  const report = await new RestoreEngine(fixture.api, fixture.store).run(
-    await imported(),
-    await fixture.api.context(sourceBoard.id),
-    { ...options, signal: active.signal, onProgress: () => active.abort() },
-  );
-  expect([RestoreStatus.Cancelled, RestoreStatus.Unknown]).toContain(report.status);
-  expect(report.target?.id).toBe(targetId);
-  expect(fixture.calls.some((call) => call.method === 'DELETE')).toBe(false);
+  const report = await run(fixture, await imported(), {
+    signal: active.signal,
+    onProgress: () => active.abort(),
+  });
+  expect(report.status).toBe(RestoreStatus.Cancelled);
+  expect(report.pending).toBeNull();
+  expect(writes(fixture)).toHaveLength(0);
 });
 
-test('unset custom fields remain unset without sending a clearing update', async () => {
+test('unset custom fields do not clear current values', async () => {
   const input = await imported();
   for (const value of input.snapshot.customFieldValues) {
     delete value.value;
     delete value.optionId;
   }
-  const validated = await readImport(new Blob([jsonBytes(input.snapshot)]));
   const fixture = restorationFixture();
-  const report = await new RestoreEngine(fixture.api, fixture.store).run(
-    validated,
-    await fixture.api.context(sourceBoard.id),
-    options,
-  );
-  expect(report.status).toBe(RestoreStatus.Partial);
-  expect(fixture.calls.some((call) => call.method === 'PUT')).toBe(false);
+  await run(fixture, input);
+  expect(writes(fixture).some((call) => call.method === 'PUT')).toBe(false);
 });
 
-test('lost journal storage after creation keeps the target link and blocks blind continuation', async () => {
+test('lost journal storage after a confirmed write returns an uncertain report', async () => {
   const fixture = restorationFixture();
   const store = new MemoryJournal();
   const persist = store.save.bind(store);
   store.save = (journal) => {
-    if (journal.target) throw new Error('Storage quota');
+    if (Object.keys(journal.completed).length) throw new Error('quota');
     persist(journal);
   };
-  const input = await imported();
-  const context = await fixture.api.context(sourceBoard.id);
-  const engine = new RestoreEngine(fixture.api, store);
-  const report = await engine.run(input, context, options);
+  const report = await run(fixture, await imported(), {}, store);
   expect(report.status).toBe(RestoreStatus.Unknown);
-  expect(report.target?.id).toBe(targetId);
-  await expect(engine.run(input, context, { ...options, resume: true })).rejects.toThrow();
-  expect(fixture.calls.filter((call) => call.method === 'POST')).toHaveLength(1);
-});
-
-test('an uncertain journal cannot resume even when its pending key is absent', async () => {
-  const fixture = restorationFixture((call) =>
-    call.path === '/cards' && call.method === 'POST'
-      ? new Response('', { status: 403 })
-      : undefined,
-  );
-  const input = await imported();
-  const context = await fixture.api.context(sourceBoard.id);
-  const engine = new RestoreEngine(fixture.api, fixture.store);
-  const report = await engine.run(input, context, options);
-  fixture.store.save({ ...report, status: RestoreStatus.Unknown, pending: null });
-  const writes = fixture.calls.filter((call) => call.method !== 'GET').length;
-  await expect(engine.run(input, context, { ...options, resume: true })).rejects.toMatchObject({
-    code: RestoreErrorCode.UnknownWrite,
-  });
-  expect(fixture.calls.filter((call) => call.method !== 'GET')).toHaveLength(writes);
-});
-
-test('cancellation during a parent read is resumable without duplicating the board', async () => {
-  const active = new AbortController();
-  let cancelRead = true;
-  const fixture = restorationFixture((call) => {
-    if (cancelRead && call.method === 'GET' && call.path === `/boards/${targetId}`) {
-      cancelRead = false;
-      active.abort();
-    }
-  });
-  const input = await imported();
-  const context = await fixture.api.context(sourceBoard.id);
-  const engine = new RestoreEngine(fixture.api, fixture.store);
-  const report = await engine.run(input, context, { ...options, signal: active.signal });
-  expect(report.status).toBe(RestoreStatus.Cancelled);
-  expect(report.pending).toBeNull();
-  expect(fixture.calls.filter((call) => call.method === 'POST')).toHaveLength(1);
-  const resumed = await engine.run(input, context, { ...options, resume: true });
-  expect(resumed.status).toBe(RestoreStatus.Partial);
-  expect(
-    fixture.calls.filter((call) => call.method === 'POST' && call.path === '/boards'),
-  ).toHaveLength(1);
+  expect(report.error).toBe(RestoreErrorCode.JournalUnavailable);
+  expect(writes(fixture)).toHaveLength(1);
+  expect(store.read()?.pending).not.toBeNull();
 });
 
 test.each([false, true])(
-  'cancellation after POST distinguishes observed and lost responses: lost=%s',
+  'cancellation after dispatch distinguishes observed and lost responses: lost=%s',
   async (lost) => {
     const active = new AbortController();
     const fixture = restorationFixture((call) => {
       if (call.method === 'POST' && call.path === '/cards') {
         active.abort();
-        if (lost) throw new Error('Synthetic disconnected write');
+        if (lost) throw new Error('lost write');
       }
     });
-    const input = await imported();
-    const context = await fixture.api.context(sourceBoard.id);
-    const engine = new RestoreEngine(fixture.api, fixture.store);
-    const report = await engine.run(input, context, { ...options, signal: active.signal });
-    const completedCards = Object.keys(report.completed).filter((key) => key.startsWith('cards/'));
+    const report = await run(fixture, await imported(), { signal: active.signal });
     expect(report.status).toBe(lost ? RestoreStatus.Unknown : RestoreStatus.Cancelled);
-    expect(completedCards).toHaveLength(lost ? 0 : 1);
-    if (lost) {
-      expect(report.error).toBe(ApiErrorCode.WriteResultUnknown);
-      expect(report.pending).toMatch(/^cards\//);
-      await expect(engine.run(input, context, { ...options, resume: true })).rejects.toMatchObject({
-        code: RestoreErrorCode.UnknownWrite,
-      });
-    } else expect(report.pending).toBeNull();
-    expect(
-      fixture.calls.filter((call) => call.method === 'POST' && call.path === '/cards'),
-    ).toHaveLength(1);
+    expect(Object.keys(report.completed).filter((key) => key.startsWith('cards/'))).toHaveLength(
+      lost ? 0 : 1,
+    );
+    expect(writes(fixture).filter((call) => call.path === '/cards')).toHaveLength(1);
+    if (lost) expect(report.error).toBe(ApiErrorCode.WriteResultUnknown);
   },
 );
 
-test('rate-limited optional writes stop for continuation instead of becoming permanent omissions', async () => {
+test('a rate limit on an optional write remains resumable instead of permanently skipped', async () => {
   let limited = true;
   const fixture = restorationFixture((call) =>
     limited && call.method === 'POST' && call.path === '/customFields'
@@ -272,21 +270,15 @@ test('rate-limited optional writes stop for continuation instead of becoming per
       : undefined,
   );
   const input = await imported();
-  const context = await fixture.api.context(sourceBoard.id);
-  const engine = new RestoreEngine(fixture.api, fixture.store);
-  const report = await engine.run(input, context, options);
-  expect(report.status).toBe(RestoreStatus.Failed);
-  expect(report.skipped).toEqual([]);
-  expect(report.pending).toBeNull();
+  const failed = await run(fixture, input);
+  expect(failed.status).toBe(RestoreStatus.Failed);
+  expect(failed.skipped).toEqual([]);
   limited = false;
-  const resumed = await engine.run(input, context, { ...options, resume: true });
-  expect(resumed.status).toBe(RestoreStatus.Partial);
-  expect(
-    Object.keys(resumed.completed).filter((key) => key.startsWith('customFields/')),
-  ).toHaveLength(2);
+  expect((await run(fixture, input, { resume: true })).status).toBe(RestoreStatus.Partial);
+  expect(fixture.children('/customFields')).toHaveLength(2);
 });
 
-test('a temporary parent-read failure never skips an optional object', async () => {
+test('a failed parent read does not permanently skip an optional object', async () => {
   let failReads = false;
   const fixture = restorationFixture((call) =>
     failReads && call.method === 'GET' && call.path === `/boards/${targetId}`
@@ -294,10 +286,7 @@ test('a temporary parent-read failure never skips an optional object', async () 
       : undefined,
   );
   const input = await imported();
-  const context = await fixture.api.context(sourceBoard.id);
-  const engine = new RestoreEngine(fixture.api, fixture.store);
-  const report = await engine.run(input, context, {
-    ...options,
+  const report = await run(fixture, input, {
     onProgress: ({ resource }) => {
       if (resource === RestoreResource.Field) failReads = true;
     },
@@ -305,156 +294,190 @@ test('a temporary parent-read failure never skips an optional object', async () 
   expect(report.status).toBe(RestoreStatus.Failed);
   expect(report.skipped).toEqual([]);
   failReads = false;
-  const resumed = await engine.run(input, context, { ...options, resume: true });
-  expect(
-    Object.keys(resumed.completed).filter((key) => key.startsWith('customFields/')),
-  ).toHaveLength(2);
+  expect((await run(fixture, input, { resume: true })).status).toBe(RestoreStatus.Partial);
 });
 
-test('a timed-out optional POST remains unknown and cannot be continued blindly', async () => {
+test('comment chunks resume with original attribution language and reimport without duplication', async () => {
+  let count = 0;
   const fixture = restorationFixture((call) =>
-    call.method === 'POST' && call.path === '/customFields'
-      ? new Response('', { status: 408 })
+    call.method === 'POST' && call.path.endsWith('/actions/comments') && ++count === 2
+      ? new Response('', { status: 401 })
       : undefined,
   );
-  const input = await imported();
-  const context = await fixture.api.context(sourceBoard.id);
-  const engine = new RestoreEngine(fixture.api, fixture.store);
-  const report = await engine.run(input, context, options);
-  expect(report.status).toBe(RestoreStatus.Unknown);
-  expect(report.pending).toMatch(/^customFields\//);
-  expect(report.skipped).toEqual([]);
-  await expect(engine.run(input, context, { ...options, resume: true })).rejects.toMatchObject({
-    code: RestoreErrorCode.UnknownWrite,
-  });
-});
-
-test('comment chunk continuation retains its original language and exact text boundaries', async () => {
-  let writes = 0;
-  const accepted = new Map<string, string[]>();
-  const fixture = restorationFixture((call) => {
-    if (call.method !== 'POST' || !call.path.endsWith('/actions/comments')) return;
-    if (++writes === 2) return new Response('', { status: 401 });
-    if (!(call.body instanceof FormData) && typeof call.body.text === 'string')
-      accepted.set(call.path, [...(accepted.get(call.path) ?? []), call.body.text]);
-  });
-  const input = await imported();
+  const input = await imported(true);
   const comment = input.snapshot.comments[0]!;
   comment.text = '0123456789'.repeat(2500);
-  const expected = commentSummaries(input, comment.cardId, Locale.English).join('');
-  const context = await fixture.api.context(sourceBoard.id);
-  const engine = new RestoreEngine(fixture.api, fixture.store);
-  const failed = await engine.run(input, context, options);
-  expect(failed.status).toBe(RestoreStatus.Failed);
-  const resumed = await engine.run(input, context, {
-    ...options,
-    locale: Locale.Russian,
-    resume: true,
-  });
+  expect((await run(fixture, input)).status).toBe(RestoreStatus.Failed);
+  const resumed = await run(fixture, input, { locale: Locale.Russian, resume: true });
   expect(resumed.status).toBe(RestoreStatus.Partial);
-  const cardId = failed.completed[`cards/${comment.cardId}`];
-  expect(accepted.get(`/cards/${cardId}/actions/comments`)?.join('')).toBe(expected);
+  const parts = resumed.commentParts?.[`comments/${comment.id}`] ?? [];
+  const cardId = resumed.bindings?.[`cards/${comment.cardId}`];
+  const combined = parts
+    .map(
+      (part) =>
+        (fixture.records.get(`/cards/${cardId}/actions/${part}`)?.data as { text: string }).text,
+    )
+    .join('');
+  expect(combined).toBe(attributedComment(comment, Locale.English));
+  const before = writes(fixture).length;
+  expect((await fixture.plan(input)).actions).toHaveLength(0);
+  await run(fixture, input);
+  expect(writes(fixture)).toHaveLength(before);
 });
 
-test('an unsafe successful board creation response retains an unresolved board checkpoint', async () => {
-  const fixture = restorationFixture((call) =>
-    call.method === 'POST' && call.path === '/boards'
-      ? new Response(
-          JSON.stringify({
-            id: targetId,
-            shortLink: 'NEW00001',
-            idOrganization: sourceBoard.id,
-            prefs: { permissionLevel: 'private' },
-          }),
-        )
-      : undefined,
-  );
-  const report = await new RestoreEngine(fixture.api, fixture.store).run(
-    await imported(),
-    await fixture.api.context(sourceBoard.id),
-    options,
-  );
-  expect(report.status).toBe(RestoreStatus.Unknown);
-  expect(report.pending).toBe('board');
-  expect(fixture.calls.filter((call) => call.method === 'POST')).toHaveLength(1);
-});
-
-test('an already cancelled run cannot overwrite a previous recovery journal', async () => {
+test('already cancelled operations leave the previous journal untouched', async () => {
   const fixture = restorationFixture();
   const input = await imported();
-  const context = await fixture.api.context(sourceBoard.id);
-  const previous = {
-    ...(await new RestoreEngine(fixture.api, fixture.store).run(input, context, options)),
-    status: RestoreStatus.Unknown,
-    pending: 'cards/unresolved',
-  };
-  fixture.store.save(previous);
+  const plan = await fixture.plan(input);
   const active = new AbortController();
   active.abort();
-  const before = fixture.calls.length;
+  const context = await fixture.api.context(sourceBoard.id);
   await expect(
     new RestoreEngine(fixture.api, fixture.store).run(input, context, {
-      ...options,
+      plan,
+      locale: Locale.English,
       signal: active.signal,
     }),
   ).rejects.toMatchObject({ name: 'AbortError' });
-  expect(fixture.store.read()).toEqual(previous);
-  expect(fixture.calls).toHaveLength(before);
+  expect(fixture.store.read()).toBeNull();
+  expect(writes(fixture)).toHaveLength(0);
 });
 
-test('cancellation at the final verification cannot publish a successful result', async () => {
+test('a deleted completed resource invalidates continuation instead of reusing a stale checkpoint', async () => {
+  const fixture = restorationFixture((call) =>
+    call.method === 'POST' && call.path === '/cards'
+      ? new Response('', { status: 403 })
+      : undefined,
+  );
   const input = await imported();
-  for (const section of [
-    'lists',
-    'cards',
-    'labels',
-    'members',
-    'customFields',
-    'customFieldValues',
-    'checklists',
-    'checklistItems',
-    'comments',
-    'attachments',
-  ] as const) {
-    input.snapshot[section] = [];
-    input.snapshot.coverage[section] = { status: CoverageStatus.Complete, count: 0 };
-  }
-  const validated = await readImport(new Blob([jsonBytes(input.snapshot)]));
+  const failed = await run(fixture, input);
+  const listId = failed.bindings?.[`lists/${input.snapshot.lists[0]!.id}`];
+  fixture.records.delete(`/lists/${listId}`);
+  await expect(run(fixture, input, { resume: true })).rejects.toMatchObject({
+    code: RestoreErrorCode.PlanStale,
+  });
+});
+
+test('legacy new-board journals cannot resume or redirect imports', async () => {
   const fixture = restorationFixture();
+  const input = await imported();
+  const journal = await run(fixture, input);
+  const plan = await fixture.plan(input);
+  delete journal.mode;
+  journal.status = RestoreStatus.Failed;
+  journal.target!.id = id(777);
+  fixture.store.save(journal);
+  await expect(run(fixture, input, { resume: true, plan })).rejects.toMatchObject({
+    code: RestoreErrorCode.JournalMismatch,
+  });
+  expect(fixture.calls.some((call) => call.path.includes(id(777)))).toBe(false);
+});
+
+test('cancellation at final verification cannot report success', async () => {
+  const input = await imported(true);
+  const fixture = restorationFixture(undefined, input.snapshot);
   const active = new AbortController();
-  const verifyTarget = fixture.api.verifyTarget.bind(fixture.api);
-  const verification = vi.spyOn(fixture.api, 'verifyTarget').mockImplementation(async (request) => {
-    await verifyTarget(request);
+  const verify = fixture.api.verifyTarget.bind(fixture.api);
+  vi.spyOn(fixture.api, 'verifyTarget').mockImplementation(async (options) => {
+    await verify(options);
     active.abort();
   });
-  const context = await fixture.api.context(sourceBoard.id);
-  const engine = new RestoreEngine(fixture.api, fixture.store);
-  const report = await engine.run(validated, context, { ...options, signal: active.signal });
-  expect(report.status).toBe(RestoreStatus.Cancelled);
-  expect(report.pending).toBeNull();
-  expect(report.target?.id).toBe(targetId);
-  verification.mockRestore();
-  expect((await engine.run(validated, context, { ...options, resume: true })).status).toBe(
-    RestoreStatus.Complete,
+  expect((await run(fixture, input, { signal: active.signal })).status).toBe(
+    RestoreStatus.Cancelled,
   );
-  expect(fixture.calls.filter((call) => call.method === 'POST')).toHaveLength(1);
+  expect(writes(fixture)).toHaveLength(0);
 });
 
-test('repeated continuation never duplicates omissions from already visited cards', async () => {
-  let cards = 0;
-  const fixture = restorationFixture((call) => {
-    if (call.method !== 'POST') return;
-    if (call.path === '/customFields' || (call.path === '/cards' && ++cards > 1))
-      return new Response('', { status: 403 });
-  });
+test('keeping current values writes nothing despite differing snapshot fields', async () => {
   const input = await imported();
-  const context = await fixture.api.context(sourceBoard.id);
-  const engine = new RestoreEngine(fixture.api, fixture.store);
-  const failed = await engine.run(input, context, options);
-  expect(failed.status).toBe(RestoreStatus.Failed);
-  expect(failed.skipped.length).toBeGreaterThan(0);
-  const resumed = await engine.run(input, context, { ...options, resume: true });
-  expect(resumed.status).toBe(RestoreStatus.Failed);
-  expect(resumed.skipped).toEqual(failed.skipped);
-  expect(new Set(resumed.skipped).size).toBe(resumed.skipped.length);
+  const fixture = restorationFixture(undefined, input.snapshot);
+  fixture.records.get(`/cards/${input.snapshot.cards[0]!.id}`)!.desc = 'Current description';
+  const plan = await fixture.plan(input, MergeChoice.Current);
+  expect(plan.unresolved).toBe(0);
+  expect((await run(fixture, input, { plan })).status).toBe(RestoreStatus.Complete);
+  expect(writes(fixture)).toHaveLength(0);
+});
+
+test('JSON imports recreate available file links once and retain that mapping on subsequent imports', async () => {
+  const input = await imported();
+  for (const attachment of input.snapshot.attachments)
+    attachment.url = `https://trello.com/1/cards/${attachment.cardId}/attachments/${attachment.id}/download/${encodeURIComponent(attachment.name)}`;
+  const fixture = restorationFixture();
+  const first = await run(fixture, input);
+  expect(first.status).toBe(RestoreStatus.Partial);
+  expect(writes(fixture).filter((call) => call.path.endsWith('/attachments'))).toHaveLength(3);
+  expect((await fixture.plan(input)).actions).toHaveLength(0);
+  const before = writes(fixture).length;
+  await run(fixture, input);
+  expect(writes(fixture)).toHaveLength(before);
+});
+
+test('reviewed item, list, label, and custom value differences update only selected fields', async () => {
+  const input = await imported();
+  const fixture = restorationFixture(undefined, input.snapshot);
+  fixture.records.get(`/lists/${input.snapshot.lists[0]!.id}`)!.name = 'Current list';
+  fixture.records.get(`/labels/${input.snapshot.labels[0]!.id}`)!.color = 'yellow';
+  const item = input.snapshot.checklistItems[0]!;
+  fixture.records.get(`/checklists/${item.checklistId}/checkItems/${item.id}`)!.state = item.checked
+    ? 'incomplete'
+    : 'complete';
+  const value = input.snapshot.customFieldValues.find((value) => value.value)!;
+  fixture.records.get(`/cards/${value.cardId}/customFieldItems/${value.fieldId}`)!.value = {
+    text: 'Current text',
+  };
+  const report = await run(fixture, input);
+  expect(report.status).toBe(RestoreStatus.Partial);
+  expect(writes(fixture).filter((call) => call.method === 'PUT')).toHaveLength(4);
+  expect((await fixture.plan(input)).actions).toHaveLength(0);
+});
+
+test.each([RestoreStatus.Unknown, RestoreStatus.Running])(
+  'an uncertain journal on another board cannot be overwritten: %s',
+  async (status) => {
+    const input = await imported();
+    const fixture = restorationFixture();
+    const previous = restoreJournal();
+    assert(previous.target);
+    previous.target.id = id(777);
+    previous.sourceContextId = id(777);
+    previous.status = status;
+    previous.pending = status === RestoreStatus.Running ? 'cards/uncertain' : null;
+    fixture.store.save(previous);
+    await expect(run(fixture, input)).rejects.toMatchObject({
+      code: RestoreErrorCode.UnknownWrite,
+    });
+    expect(fixture.store.read()).toEqual(previous);
+    expect(writes(fixture)).toHaveLength(0);
+  },
+);
+
+test('a rejected dropdown copy omits its dependent value instead of using the old option', async () => {
+  const input = await imported();
+  const destination = structuredClone(input.snapshot);
+  const field = destination.customFields[0];
+  const option = field?.options[0];
+  assert(field && option);
+  option.text = 'Current option';
+  const fixture = restorationFixture(
+    (call) =>
+      call.method === 'POST' && call.path.endsWith('/options')
+        ? new Response('', { status: 403 })
+        : undefined,
+    destination,
+  );
+  const current = await fixture.api.snapshot(await fixture.api.context(sourceBoard.id));
+  const conflict = buildMergePlan(input, current).conflicts.find(
+    (item) => item.record.sourceId === option.id,
+  );
+  assert(conflict);
+  const decisions = { [conflict.key]: MergeChoice.Snapshot };
+  const withCopy = buildMergePlan(input, current, decisions);
+  for (const item of withCopy.conflicts)
+    if (item.field === MergeField.Value) decisions[item.key] = MergeChoice.Snapshot;
+  const plan = buildMergePlan(input, current, decisions);
+  expect(plan.unresolved).toBe(0);
+  const report = await run(fixture, input, { plan });
+  expect(report.status).toBe(RestoreStatus.Partial);
+  expect(report.skipped.some((key) => key.startsWith(`${RestoreResource.Value}/`))).toBe(true);
+  expect(writes(fixture).filter((call) => call.method === 'PUT')).toHaveLength(0);
 });

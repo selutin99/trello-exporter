@@ -1,21 +1,24 @@
 # Repository instructions
 
 - Never create or use Git worktrees. Work in the main project directory.
-- The project implements JSON/ZIP export and new-board restoration, alongside
+- The project implements JSON/ZIP export and current-board merging, alongside
   Markdown/PDF/XLSX/CSV export and historical diagnostics
   Keep implementation status distinct from pending live client/workload validation
-- Keep the product specification and snapshot format consistent when changing
-  behavior or release scope.
+- Keep the README workflow, snapshot contract, and executable schemas consistent
+  when changing behavior or release scope. Do not recreate a docs/ directory.
 - Use synthetic board data in examples, fixtures, screenshots, and issues.
   Never commit real exports, attachments, API tokens, or restore journals.
 - Do not promise exact restoration of Trello identities, timestamps, activity
   history, permissions, or unsupported Power-Up data.
 - Live tests may access only the board explicitly designated by the user and
-  new restoration boards created during that test operation. Never enumerate
+  other destination boards explicitly approved for that operation. Never enumerate
   other boards or change their cards, memberships, settings, or Power-Ups.
 - Keep real test-board references in runtime configuration, not public fixtures.
   Verify the source board and child ownership before mutations. Prototype UI
   writes remain disabled until an explicit write test is ready and authorized.
+- Imports target only the currently open SDK board. Never create boards during
+  import, infer a destination from snapshot data, or delete current-only content.
+  Require explicit conflict choices and revalidate the reviewed state before writes.
 
 ## Language and source organization
 

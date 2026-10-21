@@ -7,7 +7,11 @@ export enum RestoreStatus {
   Cancelled = 'cancelled',
   Unknown = 'unknown',
 }
+export enum RestoreMode {
+  Merge = 'current-board-merge',
+}
 export enum RestoreResource {
+  Board = 'boards',
   List = 'lists',
   Card = 'cards',
   Label = 'labels',
@@ -35,6 +39,8 @@ export enum RestoreErrorCode {
   UnknownWrite = 'RESTORE_UNKNOWN_WRITE',
   InvalidPlan = 'RESTORE_INVALID_PLAN',
   Failed = 'RESTORE_FAILED',
+  PlanStale = 'RESTORE_PLAN_STALE',
+  IncompleteTarget = 'RESTORE_TARGET_INCOMPLETE',
 }
 /** A restoration error without request or imported content */
 export class RestoreError extends Error {

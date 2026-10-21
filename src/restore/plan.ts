@@ -13,7 +13,7 @@ export interface RestorePlan {
 /**
  * Previews the restoration scope and intentional fidelity limits without network access
  * @param imported - Fully validated local export
- * @returns Object counts and explicit omissions to review before board creation
+ * @returns Object counts and explicit omissions to review before current-board merging
  */
 export function restorationPlan(imported: ImportedBoard): RestorePlan {
   const { snapshot } = imported;

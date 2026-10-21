@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" fill="none" role="img" aria-labelledby="title description">
+  <title id="title">Review changes before importing</title>
+  <desc id="description">An illustrative merge review compares snapshot and current board descriptions, lets you choose either value, and preserves current-only content</desc>
+  <rect x="1" y="1" width="1198" height="358" rx="22" fill="#F4F8FC" stroke="#D8E3EE" stroke-width="2"/>
+  <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+    <text x="38" y="44" fill="#172B4D" font-size="21" font-weight="700">You decide what changes</text>
+    <text x="38" y="72" fill="#526780" font-size="14">Illustrative review · Synthetic content · Existing board, existing identities</text>
+    <rect x="38" y="98" width="728" height="223" rx="14" fill="white" stroke="#CBD8E6"/>
+    <text x="60" y="130" fill="#172B4D" font-size="15" font-weight="650">Card · Prepare the release · Description</text>
+    <text x="60" y="163" fill="#60758C" font-size="11" font-weight="700" letter-spacing="1">CURRENT BOARD</text><text x="420" y="163" fill="#60758C" font-size="11" font-weight="700" letter-spacing="1">SNAPSHOT</text>
+    <rect x="60" y="176" width="324" height="66" rx="7" fill="#F1F5FA"/><rect x="420" y="176" width="324" height="66" rx="7" fill="#EAF7F3"/>
+    <text x="75" y="201" fill="#344963" font-size="13">Publish after the design review</text><text x="75" y="223" fill="#60758C" font-size="12">Updated on the board</text><text x="435" y="201" fill="#22574C" font-size="13">Publish after the final tests</text><text x="435" y="223" fill="#527E73" font-size="12">Saved in the snapshot</text>
+    <rect x="60" y="263" width="150" height="35" rx="7" fill="#FFF" stroke="#C4D2E1"/><text x="82" y="285" fill="#344963" font-size="12" font-weight="600">Keep current</text>
+    <rect x="224" y="263" width="163" height="35" rx="7" fill="#087F73"/><text x="247" y="285" fill="#FFF" font-size="12" font-weight="600">Use snapshot ✓</text>
+    <rect x="794" y="98" width="367" height="223" rx="14" fill="#EAF2FA"/>
+    <g fill="#087F73"><circle cx="822" cy="134" r="11"/><circle cx="822" cy="187" r="11"/><circle cx="822" cy="240" r="11"/></g>
+    <path d="m817 134 4 4 6-8m-10 57 4 4 6-8m-10 57 4 4 6-8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="844" y="138" fill="#172B4D" font-size="14" font-weight="600">Reuse matching objects</text><text x="844" y="158" fill="#526780" font-size="12">No duplicate cards for the same IDs</text>
+    <text x="844" y="191" fill="#172B4D" font-size="14" font-weight="600">Preserve current-only content</text><text x="844" y="211" fill="#526780" font-size="12">No deletion or automatic archiving</text>
+    <text x="844" y="244" fill="#172B4D" font-size="14" font-weight="600">Recheck before applying</text><text x="844" y="264" fill="#526780" font-size="12">A changed board needs a fresh review</text>
+    <text x="816" y="298" fill="#60758C" font-size="11">The destination is the board you have open</text>
+  </g>
+</svg>

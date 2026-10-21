@@ -1,160 +1,83 @@
-import { TestBoardApi } from '../api/client';
+import { BoardReader } from '../api/reader';
 import { Transport } from '../api/transport';
 import { HttpMethod } from '../api/types';
 import type { ClientOptions, RequestOptions } from '../api/types';
 import { isId, isRecord } from '../api/validation';
 import { ApiError, ScopeError } from '../api/errors';
 import { ApiErrorCode } from '../shared/error-codes';
-import { serviceUrls } from '../config/services';
+import { captureBoard } from '../snapshot/capture';
+import type { Snapshot } from '../snapshot/types';
 import { RestoreError, RestoreErrorCode, RestoreResource } from './codes';
 import type { RestoreContext, RestoreTarget } from './types';
+import { canonicalJson } from '../shared/json';
+import { assertCreatePayload, assertUpdatePayload, assertExpectedValues } from './payloads';
+import { RestoreScope } from './scope';
 
-/** API writes restricted to a newly created restoration board, never the context board */
+/** Merge transport restricted to the currently open SDK board; board creation is not exposed */
 export class RestoreApi {
   readonly #transport: Transport;
-  readonly #source: TestBoardApi;
-  #target: RestoreTarget | null = null;
-
+  readonly #scope: RestoreScope;
   /**
-   * Creates a restoration transport using the trusted API origin
-   * @param options - Explicit board boundary, OAuth provider, and HTTP dependencies
+   * Binds the trusted API origin and explicitly verified board boundary
+   * @param options - Current board identity, OAuth provider, and HTTP dependencies
    */
-  constructor(options: ClientOptions) {
+  constructor(private readonly options: ClientOptions) {
     this.#transport = new Transport(options);
-    this.#source = new TestBoardApi(options);
+    this.#scope = new RestoreScope(options);
   }
-
   /**
-   * Discovers only the current board's Workspace without enumerating boards or Workspaces
-   * @param boardId - Live SDK context identity
+   * Verifies the current SDK board and its Workspace without enumerating other boards
+   * @param boardId - Canonical identity from the SDK, never the snapshot
    * @param options - Optional cancellation
-   * @returns The verified destination Workspace context
-   * @throws ScopeError for a foreign board; ApiError for unavailable metadata
+   * @returns Verified destination context
+   * @throws ScopeError for an identity mismatch; propagates API and cancellation failures
    */
-  async context(boardId: string, options: RequestOptions = {}): Promise<RestoreContext> {
-    await this.#source.verifyBoard({ contextBoardId: boardId, ...options });
-    const board = await this.#transport.request(HttpMethod.Get, `/boards/${boardId}`, {
-      query: {
-        fields: 'id,idOrganization',
-        organization: 'true',
-        organization_fields: 'id,displayName',
-      },
-      ...options,
-    });
-    if (!isRecord(board) || board.id !== boardId || !isId(board.idOrganization))
-      throw new ScopeError();
-    const workspace = board.organization;
-    const workspaceName =
-      isRecord(workspace) &&
-      workspace.id === board.idOrganization &&
-      typeof workspace.displayName === 'string'
-        ? workspace.displayName
-        : board.idOrganization;
-    return { boardId, workspaceId: board.idOrganization, workspaceName };
+  context(boardId: string, options: RequestOptions = {}): Promise<RestoreContext> {
+    return this.#scope.context(boardId, options);
   }
-
   /**
-   * Creates a new private board without default lists or labels
-   * @param context - Freshly verified context, independent of imported source IDs
-   * @param name - User-reviewed destination name
-   * @param description - Imported board description
+   * Selects only the existing board verified by the current context
+   * @param context - Fresh SDK-bound destination context
    * @param options - Optional cancellation
-   * @returns The newly created target
-   * @throws ApiError on an uncertain write; RestoreError when privacy or ownership differs
+   * @returns Current board metadata for progress and reports
+   * @throws ScopeError when board identity or Workspace changed
    */
-  async createBoard(
-    context: RestoreContext,
-    name: string,
-    description: string,
-    options: RequestOptions = {},
-  ): Promise<RestoreTarget> {
-    const board = await this.#transport.request(HttpMethod.Post, '/boards', {
-      body: {
-        name,
-        desc: description,
-        idOrganization: context.workspaceId,
-        prefs_permissionLevel: 'private',
-        defaultLists: false,
-        defaultLabels: false,
-      },
-      ...options,
-    });
-    if (
-      !isRecord(board) ||
-      !isId(board.id) ||
-      typeof board.shortLink !== 'string' ||
-      !/^[a-zA-Z0-9]{8}$/.test(board.shortLink)
-    )
-      throw new ApiError(ApiErrorCode.WriteResultUnknown);
-    if (
-      board.id === context.boardId ||
-      board.idOrganization !== context.workspaceId ||
-      !isRecord(board.prefs) ||
-      board.prefs.permissionLevel !== 'private'
-    )
-      throw new RestoreError(RestoreErrorCode.InvalidTarget);
-    this.#target = {
-      id: board.id,
-      name,
-      workspaceId: context.workspaceId,
-      url: `${serviceUrls.trelloBoardOrigin}/b/${board.shortLink}`,
-    };
-    return this.#target;
+  selectTarget(context: RestoreContext, options: RequestOptions = {}): Promise<RestoreTarget> {
+    return this.#scope.selectTarget(context, options);
   }
-
   /**
-   * Rebinds only a target previously recorded by this browser's trusted local journal
-   * @param target - Locally created operation target, never imported snapshot input
-   * @param context - Freshly verified live context
+   * Reads current active content for a merge comparison without downloading attachment bytes
+   * @param context - Fresh live context
    * @param options - Optional cancellation
-   * @throws RestoreError or ScopeError when the board, Workspace, or privacy no longer matches
+   * @returns Current normalized content
+   * @throws Propagates ownership, read, and cancellation failures
    */
-  async resumeTarget(
-    target: RestoreTarget,
-    context: RestoreContext,
-    options: RequestOptions = {},
-  ): Promise<void> {
-    if (
-      target.id === context.boardId ||
-      target.workspaceId !== context.workspaceId ||
-      !isId(target.id)
-    )
-      throw new RestoreError(RestoreErrorCode.InvalidTarget);
-    this.#target = target;
-    await this.verifyTarget(options);
+  async snapshot(context: RestoreContext, options: RequestOptions = {}): Promise<Snapshot> {
+    await this.selectTarget(context, options);
+    return (
+      await captureBoard(
+        new BoardReader(this.options),
+        context.boardId,
+        options.signal ? { signal: options.signal } : {},
+      )
+    ).snapshot;
   }
-
   /**
-   * Rechecks destination identity, privacy, and Workspace
+   * Rechecks that the selected current board remains active in the same Workspace
    * @param options - Optional cancellation
-   * @throws RestoreError for a missing target; ScopeError if target ownership changed
+   * @throws ScopeError when the destination changed; RestoreError before selection
    */
   async verifyTarget(options: RequestOptions = {}): Promise<void> {
-    const target = this.#target;
-    if (!target) throw new RestoreError(RestoreErrorCode.InvalidTarget);
-    const board = await this.#transport.request(HttpMethod.Get, `/boards/${target.id}`, {
-      query: { fields: 'id,idOrganization,prefs,closed' },
-      ...options,
-    });
-    if (
-      !isRecord(board) ||
-      board.id !== target.id ||
-      board.idOrganization !== target.workspaceId ||
-      board.closed !== false ||
-      !isRecord(board.prefs) ||
-      board.prefs.permissionLevel !== 'private'
-    )
-      throw new ScopeError();
+    await this.#scope.verifyTarget(options);
   }
-
   /**
-   * Creates one entity after a fresh destination/parent ownership check
-   * @param resource - Supported entity kind
-   * @param parentId - Target board, list, card, or checklist identity
-   * @param body - Engine-produced values with mapped target IDs
+   * Creates one missing object after current-board and parent verification
+   * @param resource - Supported nested collection; boards cannot be created
+   * @param parentId - Mapped current-board parent identity
+   * @param body - Allowlisted engine-produced fields or attachment form data
    * @param options - Optional cancellation
-   * @returns The new target identity
-   * @throws ScopeError for a foreign parent; ApiError on failed or uncertain writes
+   * @returns The newly created identity
+   * @throws ScopeError for unsafe payloads or foreign parents; ApiError for failed or unknown writes
    */
   async create(
     resource: RestoreResource,
@@ -163,66 +86,168 @@ export class RestoreApi {
     options: RequestOptions = {},
   ): Promise<string> {
     await this.verifyTarget(options);
-    const path = await this.#path(resource, parentId, options);
+    const path = await this.#createPath(resource, parentId, options);
+    assertCreatePayload(resource, parentId, body);
+    if (resource === RestoreResource.Card && !(body instanceof FormData))
+      await this.#verifyLabels(body, options);
     const result = await this.#transport.request(HttpMethod.Post, path, { body, ...options });
     if (!isRecord(result) || !isId(result.id)) throw new ApiError(ApiErrorCode.WriteResultUnknown);
     return result.id;
   }
-
   /**
-   * Restores a custom field value to a verified target card
-   * @param cardId - Mapped target card
-   * @param fieldId - Mapped target field
-   * @param value - Typed source value or mapped option
+   * Applies one reviewed field with a fresh value check immediately before the write
+   * @param resource - Mutable current-board entity kind
+   * @param id - Verified target identity
+   * @param body - Exactly the fields selected in the merge plan
+   * @param expected - The values reviewed before the operation
    * @param options - Optional cancellation
-   * @throws ScopeError for foreign ownership; ApiError for failed or uncertain updates
+   * @throws ScopeError for unreviewed fields or foreign parents; RestoreError for stale values; propagates write failures
+   */
+  async update(
+    resource: RestoreResource,
+    id: string,
+    body: Record<string, unknown>,
+    expected: Record<string, unknown>,
+    options: RequestOptions = {},
+  ): Promise<void> {
+    await this.verifyTarget(options);
+    assertUpdatePayload(resource, body);
+    if (resource === RestoreResource.Board && id !== this.#scope.target.id) throw new ScopeError();
+    const current =
+      resource === RestoreResource.Board
+        ? await this.#scope.verifyTarget(options)
+        : await this.verifyEntity(resource, id, options);
+    assertExpectedValues(current, body, expected);
+    if (typeof body.idList === 'string')
+      await this.verifyEntity(RestoreResource.List, body.idList, options);
+    await this.#verifyLabels(body, options);
+    await this.#transport.request(HttpMethod.Put, `/${resource}/${id}`, { body, ...options });
+  }
+  /**
+   * Sets a reviewed custom value after validating the card, field, and optional old value
+   * @param cardId - Current-board card
+   * @param fieldId - Current-board custom field
+   * @param value - Typed value or mapped dropdown choice
+   * @param options - Optional cancellation
+   * @param expected - Reviewed value, or null for an unset value
+   * @throws RestoreError on a stale field; propagates ownership and write failures
    */
   async value(
     cardId: string,
     fieldId: string,
     value: Record<string, unknown>,
     options: RequestOptions = {},
+    expected: unknown = null,
   ): Promise<void> {
     await this.verifyTarget(options);
     await this.verifyEntity(RestoreResource.Card, cardId, options);
     await this.verifyEntity(RestoreResource.Field, fieldId, options);
+    if (typeof value.idValue === 'string')
+      await this.verifyNested(RestoreResource.Option, fieldId, value.idValue, options);
+    const values = await this.#transport.request(
+      HttpMethod.Get,
+      `/cards/${cardId}/customFieldItems`,
+      options,
+    );
+    if (!Array.isArray(values)) throw new ScopeError();
+    const current: unknown = values.find(
+      (item: unknown) => isRecord(item) && item.idCustomField === fieldId,
+    );
+    let content: unknown = null;
+    if (isRecord(current))
+      content = current.idValue ? { idValue: current.idValue } : { value: current.value };
+    if (canonicalJson(content) !== canonicalJson(expected))
+      throw new RestoreError(RestoreErrorCode.PlanStale);
     await this.#transport.request(HttpMethod.Put, `/cards/${cardId}/customField/${fieldId}/item`, {
       body: value,
       ...options,
     });
   }
-
   /**
-   * Verifies a known created entity before reuse or journal continuation
-   * @param resource - Supported target entity kind
-   * @param id - Target identity from this operation's journal
+   * Updates a checked item through its verified current card and checklist
+   * @param checklistId - Owning checklist
+   * @param itemId - Current item
+   * @param body - Selected name, state, or due date
+   * @param expected - Reviewed current values
    * @param options - Optional cancellation
-   * @returns Projected source response for option mapping or verification
-   * @throws ScopeError when parent ownership is not the operation's target
+   * @throws ScopeError for unreviewed fields or foreign parents; RestoreError for stale values; propagates write failures
    */
-  async verifyEntity(
+  async item(
+    checklistId: string,
+    itemId: string,
+    body: Record<string, unknown>,
+    expected: Record<string, unknown>,
+    options: RequestOptions = {},
+  ): Promise<void> {
+    await this.verifyTarget(options);
+    const checklist = await this.verifyEntity(RestoreResource.Checklist, checklistId, options);
+    const current = await this.verifyNested(RestoreResource.Item, checklistId, itemId, options);
+    if (!isId(checklist.idCard)) throw new ScopeError();
+    assertUpdatePayload(RestoreResource.Item, body);
+    await this.verifyEntity(RestoreResource.Card, checklist.idCard, options);
+    assertExpectedValues(current, body, expected);
+    await this.#transport.request(
+      HttpMethod.Put,
+      `/cards/${checklist.idCard}/checkItem/${itemId}`,
+      { body, ...options },
+    );
+  }
+  /**
+   * Verifies a selected active parent before it can receive content
+   * @param resource - Board-owned entity kind
+   * @param id - Current target identity
+   * @param options - Optional cancellation
+   * @returns Current API fields
+   * @throws RestoreError before target selection; ScopeError for malformed, archived, or foreign parents
+   */
+  verifyEntity(
     resource: RestoreResource,
     id: string,
     options: RequestOptions = {},
   ): Promise<Record<string, unknown>> {
-    if (!isId(id) || !this.#target) throw new ScopeError();
-    const path = resource === RestoreResource.Item ? null : `/${resource}/${id}`;
-    if (!path) throw new ScopeError();
-    const value = await this.#transport.request(HttpMethod.Get, path, options);
-    if (!isRecord(value) || value.id !== id) throw new ScopeError();
-    const boardId = resource === RestoreResource.Field ? value.idModel : value.idBoard;
-    if (boardId !== this.#target.id) throw new ScopeError();
-    return value;
+    return this.#scope.verifyEntity(resource, id, options);
   }
-
-  async #path(resource: RestoreResource, parent: string, options: RequestOptions): Promise<string> {
-    const target = this.#target;
-    if (!target) throw new RestoreError(RestoreErrorCode.InvalidTarget);
+  /**
+   * Verifies an item or dropdown option through its owning current-board parent
+   * @param resource - Supported nested identity kind
+   * @param parent - Mapped current-board parent
+   * @param id - Nested target identity
+   * @param options - Optional cancellation
+   * @returns The validated nested response
+   * @throws RestoreError before target selection; ScopeError for mismatched parent or nested identity
+   */
+  verifyNested(
+    resource: RestoreResource,
+    parent: string,
+    id: string,
+    options: RequestOptions = {},
+  ): Promise<Record<string, unknown>> {
+    return this.#scope.verifyNested(resource, parent, id, options);
+  }
+  async #verifyLabels(body: Record<string, unknown>, options: RequestOptions): Promise<void> {
+    if (!('idLabels' in body)) return;
+    if (!Array.isArray(body.idLabels)) throw new ScopeError();
+    const labels: unknown[] = body.idLabels;
+    for (const label of labels) {
+      if (!isId(label)) throw new ScopeError();
+      await this.verifyEntity(RestoreResource.Label, label, options);
+    }
+  }
+  async #createPath(
+    resource: RestoreResource,
+    parent: string,
+    options: RequestOptions,
+  ): Promise<string> {
+    const target = this.#scope.target;
+    if ([RestoreResource.Board, RestoreResource.Value].includes(resource)) throw new ScopeError();
     if ([RestoreResource.List, RestoreResource.Label, RestoreResource.Field].includes(resource)) {
       if (parent !== target.id) throw new ScopeError();
-      if (resource === RestoreResource.List) return `/boards/${target.id}/lists`;
-      if (resource === RestoreResource.Label) return `/boards/${target.id}/labels`;
-      return '/customFields';
+      if (resource === RestoreResource.Field) return '/customFields';
+      return `/boards/${target.id}/${resource}`;
+    }
+    if (resource === RestoreResource.Option) {
+      await this.verifyEntity(RestoreResource.Field, parent, options);
+      return `/customFields/${parent}/options`;
     }
     if (resource === RestoreResource.Card) {
       await this.verifyEntity(RestoreResource.List, parent, options);

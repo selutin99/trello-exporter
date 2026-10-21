@@ -1,13 +1,14 @@
 import { z } from 'zod';
 import { Locale } from '../i18n/types';
 import {
+  RestoreMode,
   RestoreError,
   RestoreErrorCode,
   RestoreResource,
   RestoreStatus,
   RestoreWarning,
 } from './codes';
-import type { JournalStore, RestoreContext, RestoreJournal, RestoreTarget } from './types';
+import type { JournalStore, RestoreContext, RestoreJournal, MergeJournal } from './types';
 
 const key = 'trello-exporter-restore-journal';
 const journalSchema = z.object({
@@ -35,6 +36,20 @@ const journalSchema = z.object({
   warnings: z.array(z.enum(RestoreWarning)),
   error: z.string().nullable(),
   commentLocale: z.enum(Locale).optional(),
+  mode: z.enum(RestoreMode).optional(),
+  merge: z
+    .object({
+      plannedCreates: z.number().int().nonnegative(),
+      plannedUpdates: z.number().int().nonnegative(),
+      unchanged: z.number().int().nonnegative(),
+      retained: z.number().int().nonnegative(),
+    })
+    .optional(),
+  sourceBoardId: z.string().max(128).optional(),
+  bindings: z.record(z.string(), z.string()).optional(),
+  decisions: z.record(z.string(), z.string()).optional(),
+  planned: z.record(z.string(), z.string().regex(/^[a-f0-9]{64}$/)).optional(),
+  commentParts: z.record(z.string(), z.array(z.string())).optional(),
 });
 
 /** Same-browser operation storage; downloaded reports cannot authorize arbitrary targets */
@@ -78,6 +93,15 @@ export class LocalJournalStore implements JournalStore {
 }
 
 /**
+ * Keeps an unresolved write journal from being replaced, including on another board
+ * @param journal - Last structurally validated local operation
+ * @returns Whether a pending request or uncertain result requires reconciliation
+ */
+export function hasUncertainWrite(journal: RestoreJournal | null): boolean {
+  return journal !== null && (journal.pending !== null || journal.status === RestoreStatus.Unknown);
+}
+
+/**
  * Checks whether this exact input and live context can safely continue a local operation
  * @param journal - Last structurally validated local operation
  * @param checksum - Exact selected file checksum
@@ -88,10 +112,17 @@ export function canResumeJournal(
   journal: RestoreJournal | null,
   checksum: string,
   context: RestoreContext,
-): journal is RestoreJournal & { target: RestoreTarget } {
+): journal is MergeJournal {
   return (
     journal !== null &&
     journal.target !== null &&
+    journal.target.id === context.boardId &&
+    journal.mode === RestoreMode.Merge &&
+    journal.bindings !== undefined &&
+    journal.planned !== undefined &&
+    journal.decisions !== undefined &&
+    journal.commentParts !== undefined &&
+    journal.sourceBoardId !== undefined &&
     journal.checksum === checksum &&
     journal.sourceContextId === context.boardId &&
     journal.workspaceId === context.workspaceId &&

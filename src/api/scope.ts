@@ -4,9 +4,9 @@ import { ScopeError } from './errors';
 import { isId, isRecord } from './validation';
 
 /**
- * Accepts an exact short link or HTTPS Trello board URL without query or fragment
+ * Accepts an exact short link, canonical ID, or HTTPS Trello board URL without query or fragment
  * @param value - Caller-supplied board reference
- * @returns The eight-character board short link
+ * @returns The board short link or canonical identity
  * @throws ScopeError when the reference is malformed or points outside Trello
  */
 export function parseBoardReference(value: unknown): string {
@@ -24,7 +24,7 @@ export function parseBoardReference(value: unknown): string {
     if (!match?.[1] || url.search || url.hash) throw new ScopeError();
     reference = match[1];
   }
-  if (!/^[a-zA-Z0-9]{8}$/.test(reference)) throw new ScopeError();
+  if (!/^(?:[a-zA-Z0-9]{8}|[a-f0-9]{24})$/.test(reference)) throw new ScopeError();
   return reference;
 }
 
@@ -36,7 +36,7 @@ export class TestBoardScope {
 
   /**
    * Starts an unbound scope for one board
-   * @param reference - Exact short link or supported Trello board URL
+   * @param reference - Exact short link, canonical ID, or supported Trello board URL
    * @throws ScopeError if the board reference is invalid
    */
   constructor(reference: string) {
@@ -62,7 +62,7 @@ export class TestBoardScope {
   bind(board: unknown, contextBoardId?: string): void {
     if (
       !isRecord(board) ||
-      board.shortLink !== this.reference ||
+      (board.shortLink !== this.reference && board.id !== this.reference) ||
       !isId(board.id) ||
       (contextBoardId !== undefined && contextBoardId !== board.id) ||
       (this.#boardId && board.id !== this.#boardId)

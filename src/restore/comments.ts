@@ -25,3 +25,16 @@ export function commentSummaries(
     .join('\n\n---\n\n');
   return textChunks(text, 10_000);
 }
+
+/**
+ * Attributes one original comment as literal text for a new comment on the current board
+ * @param comment - Original comment metadata and text
+ * @param locale - Explicit attribution language
+ * @returns Complete attributed text, before bounded upload chunking
+ */
+export function attributedComment(
+  comment: ImportedBoard['snapshot']['comments'][number],
+  locale: Locale,
+): string {
+  return `${translations[locale].restoreCommentHeader}\n${comment.authorDisplayName ?? '—'} · ${comment.createdAt}\n\n${comment.text}`;
+}

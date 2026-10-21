@@ -3,6 +3,10 @@ import { waitForOperation } from '../../core/operation';
 import type { ImportedBoard } from '../../import/read';
 import type { Locale } from '../../i18n';
 import { RestoreEngine } from '../../restore/engine';
+import { canResumeJournal, hasUncertainWrite } from '../../restore/journal';
+import { buildMergePlan } from '../../restore/merge/planner';
+import { MergeChoice, MergeConflictKind } from '../../restore/merge/types';
+import { RestoreError, RestoreErrorCode } from '../../restore/codes';
 import type { JournalStore } from '../../restore/types';
 import { RestoreMessage } from './types';
 import type { RestoreConnection, RestoreSessionModel } from './types';
@@ -14,125 +18,191 @@ interface Dependencies {
   changed: () => void;
 }
 
-/** Owns local validation and one restoration without depending on the DOM or SDK */
+/** Owns validation, live comparison, conflict choices, and one current-board merge without DOM dependencies */
 export class RestoreSession {
-  readonly #model: RestoreSessionModel = {
+  #model: RestoreSessionModel = {
     imported: null,
+    current: null,
+    plan: null,
     context: null,
     report: null,
     previous: null,
     message: RestoreMessage.Choose,
   };
   #active: AbortController | null = null;
-
   /**
-   * Binds explicit authorization, context, storage, and rendering boundaries
-   * @param dependencies - External effects used by user-triggered operations
+   * Binds authorization, current-board capture, storage, and view notifications
+   * @param dependencies - Explicit external effects
    */
   constructor(private readonly dependencies: Dependencies) {}
-
   /**
-   * Exposes a state snapshot without allowing callers to change operation ownership
-   * @returns Current local state and derived operation activity
+   * Exposes current view state without transferring operation ownership
+   * @returns Local state and derived activity
    */
   get model(): Readonly<RestoreSessionModel & { busy: boolean }> {
     return { ...this.#model, busy: this.busy };
   }
-
   /**
-   * Reports exclusive ownership during validation, authorization, and restoration
+   * Reports exclusive ownership during analysis and writes
    * @returns Whether an operation is active
    */
   get busy(): boolean {
     return this.#active !== null;
   }
-
-  /** Cancels the active wait or write without removing already created content */
+  /** Cancels waiting or writes while retaining already applied changes */
   cancel(): void {
     this.#active?.abort();
   }
-
   /**
-   * Validates a local file and discovers optional live context without writing
-   * @param file - User-selected snapshot or archive
-   * @returns The accepted import, or null after failure, cancellation, or competing work
+   * Validates a local file and attempts a read-only comparison with the current board
+   * @param file - Selected project JSON or ZIP
+   * @returns Accepted local content, or null after invalid input or cancellation
    */
   async load(file: Blob): Promise<ImportedBoard | null> {
-    let imported: ImportedBoard | null = null;
+    let accepted: ImportedBoard | null = null;
     await this.#task(RestoreMessage.Loading, RestoreMessage.Invalid, async (signal) => {
-      this.#model.imported = null;
-      this.#model.report = null;
-      this.#model.context = null;
-      this.#model.previous = null;
+      this.#model = {
+        ...this.#model,
+        imported: null,
+        current: null,
+        plan: null,
+        context: null,
+        report: null,
+        previous: null,
+      };
       const input = await waitForOperation(readImport(file, signal), signal);
       signal.throwIfAborted();
-      let journalAvailable = true;
+      this.#model = { ...this.#model, imported: input };
       try {
         this.#model.previous = this.dependencies.store().read();
       } catch {
-        // File preview remains available; execution requires working durable storage.
-        journalAvailable = false;
+        this.#model.message = RestoreMessage.JournalUnavailable;
+        accepted = input;
+        return;
       }
-      let connection: RestoreConnection | null = null;
       try {
-        connection = await this.dependencies.context(signal);
-      } catch {
+        await this.#analyze(signal);
+      } catch (error) {
         signal.throwIfAborted();
-        // Standalone and unauthorized previews can connect explicitly later.
+        this.#model.message = failureMessage(error, signal, RestoreMessage.Unavailable);
       }
-      signal.throwIfAborted();
-      this.#model.imported = input;
-      this.#model.context = connection?.context ?? null;
-      this.#model.message = journalAvailable
-        ? RestoreMessage.Ready
-        : RestoreMessage.JournalUnavailable;
-      imported = input;
+      accepted = input;
     });
-    return imported;
+    return accepted;
   }
-
   /**
-   * Requests explicit consent and refreshes the selected board's context
-   * @returns Completion after connection or a safe failure message
+   * Requests consent then compares against the current SDK board
+   * @returns Completion after analysis or a safe failure
    */
   async connect(): Promise<void> {
     await this.#task(RestoreMessage.Loading, RestoreMessage.Unavailable, async (signal) => {
-      await this.dependencies.authorize(signal);
-      signal.throwIfAborted();
-      const connection = await this.dependencies.context(signal);
-      signal.throwIfAborted();
-      this.#model.context = connection.context;
-      this.#model.message = RestoreMessage.Ready;
+      await waitForOperation(this.dependencies.authorize(signal), signal);
+      await this.#analyze(signal);
     });
   }
-
   /**
-   * Executes a reviewed plan using a freshly paired writer and live context
-   * @param name - Reviewed target name, or the existing journal target name for continuation
-   * @param locale - Language for attributed comment summaries
-   * @param resume - Whether to continue this browser's last operation
-   * @returns Whether the engine produced a report, including cancelled and uncertain outcomes
+   * Rebuilds a read-only comparison, dropping outdated choices
+   * @returns Completion of a fresh board analysis
    */
-  async run(name: string, locale: Locale, resume = false): Promise<boolean> {
-    const imported = this.#model.imported;
-    if (!imported || !this.#model.context) return false;
+  async analyze(): Promise<void> {
+    if (!this.#model.imported) return;
+    await this.#task(RestoreMessage.Loading, RestoreMessage.Unavailable, (signal) =>
+      this.#analyze(signal),
+    );
+  }
+  /**
+   * Resolves one conflict and recalculates dependent matches and operations
+   * @param key - Current conflict identity
+   * @param choice - Candidate identity or named resolution
+   */
+  resolve(key: string, choice: string): void {
+    const model = this.#model;
+    const { imported, current, plan } = model;
+    if (
+      this.busy ||
+      !imported ||
+      !current ||
+      !plan ||
+      !plan.conflicts.some((conflict) => conflict.key === key)
+    )
+      return;
+    this.#model = {
+      ...model,
+      plan: buildMergePlan(imported, current, { ...plan.decisions, [key]: choice }, model.previous),
+    };
+    this.dependencies.changed();
+  }
+  /**
+   * Applies an explicit bulk preference to value conflicts, leaving identity matches for individual review
+   * @param choice - Keep current or use snapshot
+   */
+  resolveValues(choice: MergeChoice.Current | MergeChoice.Snapshot): void {
+    const model = this.#model;
+    const { imported, current, plan } = model;
+    if (this.busy || !imported || !current || !plan) return;
+    const decisions = { ...plan.decisions };
+    for (const conflict of plan.conflicts)
+      if (conflict.kind === MergeConflictKind.Value) decisions[conflict.key] = choice;
+    this.#model = { ...model, plan: buildMergePlan(imported, current, decisions, model.previous) };
+    this.dependencies.changed();
+  }
+  /**
+   * Applies only an explicitly reviewed resolved plan to a freshly verified current board
+   * @param locale - Attribution language
+   * @param resume - Continue the same browser's known unfinished operation
+   * @returns Whether an operation report was produced, including failed and uncertain outcomes
+   */
+  async run(locale: Locale, resume = false): Promise<boolean> {
+    const { imported, plan, current } = this.#model;
+    if (!imported || !plan || plan.unresolved || !current) return false;
     let reported = false;
     await this.#task(RestoreMessage.Running, RestoreMessage.Failed, async (signal) => {
-      await this.dependencies.authorize(signal);
+      await waitForOperation(this.dependencies.authorize(signal), signal);
+      const { api, context } = await waitForOperation(this.dependencies.context(signal), signal);
       signal.throwIfAborted();
-      const { api, context } = await this.dependencies.context(signal);
-      signal.throwIfAborted();
-      this.#model.context = context;
+      if (context.boardId !== plan.targetBoardId)
+        throw new RestoreError(RestoreErrorCode.PlanStale);
       const engine = new RestoreEngine(api, this.dependencies.store());
-      const report = await engine.run(imported, context, { name, locale, resume, signal });
-      this.#model.report = report;
-      this.#model.previous = report;
-      this.#model.message = RestoreMessage.Ready;
+      const report = await engine.run(imported, context, { plan, locale, resume, signal });
+      this.#model = {
+        imported,
+        current,
+        context,
+        report,
+        previous: report,
+        plan: null,
+        message:
+          report.error === RestoreErrorCode.PlanStale ? RestoreMessage.Stale : RestoreMessage.Ready,
+      };
       reported = true;
     });
     return reported;
   }
-
+  async #analyze(signal: AbortSignal): Promise<void> {
+    const imported = this.#model.imported;
+    if (!imported) return;
+    this.#clearComparison();
+    const { context, api } = await waitForOperation(this.dependencies.context(signal), signal);
+    const current = await waitForOperation(api.snapshot(context, { signal }), signal);
+    signal.throwIfAborted();
+    const previous = this.dependencies.store().read();
+    const decisions = canResumeJournal(previous, imported.checksum, context)
+      ? (previous.decisions ?? {})
+      : {};
+    const plan = buildMergePlan(imported, current, decisions, previous);
+    this.#model = {
+      imported,
+      context,
+      current,
+      plan,
+      previous,
+      report: null,
+      message: hasUncertainWrite(previous) ? RestoreMessage.Unknown : RestoreMessage.Ready,
+    };
+  }
+  #clearComparison(): void {
+    this.#model = { ...this.#model, current: null, context: null, plan: null, report: null };
+  }
   async #task(
     message: RestoreMessage,
     failure: RestoreMessage,
@@ -145,11 +215,28 @@ export class RestoreSession {
     this.dependencies.changed();
     try {
       await task(active.signal);
-    } catch {
-      this.#model.message = active.signal.aborted ? RestoreMessage.Cancelled : failure;
+    } catch (error) {
+      this.#model.message = failureMessage(error, active.signal, failure);
+      if (error instanceof RestoreError && error.code === RestoreErrorCode.PlanStale)
+        this.#clearComparison();
     } finally {
       this.#active = null;
       this.dependencies.changed();
     }
   }
+}
+function failureMessage(
+  error: unknown,
+  signal: AbortSignal,
+  fallback: RestoreMessage,
+): RestoreMessage {
+  if (signal.aborted) return RestoreMessage.Cancelled;
+  if (!(error instanceof RestoreError)) return fallback;
+  const messages = new Map([
+    [RestoreErrorCode.PlanStale, RestoreMessage.Stale],
+    [RestoreErrorCode.IncompleteTarget, RestoreMessage.Incomplete],
+    [RestoreErrorCode.UnknownWrite, RestoreMessage.Unknown],
+    [RestoreErrorCode.JournalUnavailable, RestoreMessage.JournalUnavailable],
+  ]);
+  return messages.get(error.code) ?? fallback;
 }

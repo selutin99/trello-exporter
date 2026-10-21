@@ -5,7 +5,7 @@ import { Transport } from './transport';
 import { ApiError, ScopeError } from './errors';
 import { ApiErrorCode } from '../shared/error-codes';
 import { isRecord } from './validation';
-import { HttpMethod } from './types';
+import { HttpMethod, TrelloActionType } from './types';
 import type { ClientOptions, RequestOptions, BoardList } from './types';
 import {
   attachmentSchema,
@@ -244,7 +244,7 @@ export class BoardReader {
     const comments = await this.#pages(
       `/cards/${cardId}/actions`,
       commentSchema,
-      { filter: 'commentCard', memberCreator_fields: 'id,fullName' },
+      { filter: TrelloActionType.Comment, memberCreator_fields: 'id,fullName' },
       options,
     );
     for (const comment of comments) {

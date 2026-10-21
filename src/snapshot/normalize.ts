@@ -1,5 +1,6 @@
 import { groupRecords } from './collections';
 import { serviceUrls } from '../config/services';
+import { CheckItemState } from '../api/types';
 import type { SourceAttachment, SourceCard, SourceChecklist, SourceComment } from '../api/schemas';
 import { AttachmentKind, IssueCode } from './codes';
 import type { Snapshot, SnapshotAttachment, SnapshotIssue } from './types';
@@ -104,7 +105,7 @@ export function appendChecklists(snapshot: Snapshot, checklists: SourceChecklist
         checklistId: list.id,
         name: item.name,
         order: item.order,
-        checked: item.state === 'complete',
+        checked: item.state === CheckItemState.Complete,
         due: item.due ?? null,
         memberId: item.idMember && members.has(item.idMember) ? item.idMember : null,
       })),

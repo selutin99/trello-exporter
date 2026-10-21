@@ -3,6 +3,13 @@ export enum HttpMethod {
   Post = 'POST',
   Put = 'PUT',
 }
+export enum CheckItemState {
+  Complete = 'complete',
+  Incomplete = 'incomplete',
+}
+export enum TrelloActionType {
+  Comment = 'commentCard',
+}
 
 export interface BoardSummary {
   id: string;

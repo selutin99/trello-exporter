@@ -170,10 +170,18 @@
           <h2 id="restore-source"></h2>
           <p id="restore-counts"></p>
           <p id="restore-workspace"></p>
-          <label class="restore-name"
-            ><span data-i18n="restoreName"></span
-            ><input id="restore-name" type="text" maxlength="256"
-          /></label>
+          <p id="restore-destination"></p>
+          <button id="restore-analyze" data-i18n="restoreAnalyze"></button>
+          <section id="restore-merge-plan" hidden>
+            <h3 data-i18n="restoreMergeTitle"></h3>
+            <p id="restore-merge-counts" role="status" aria-live="polite"></p>
+            <p data-i18n="restoreMergeScope"></p>
+            <div class="restore-actions">
+              <button id="restore-keep-all" data-i18n="restoreKeepAll"></button>
+              <button id="restore-use-all" data-i18n="restoreUseAll"></button>
+            </div>
+            <div id="restore-conflicts"></div>
+          </section>
           <h3 data-i18n="restoreLimitations"></h3>
           <ul id="restore-limitations"></ul>
           <p data-i18n="restorePermission"></p>

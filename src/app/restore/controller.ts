@@ -1,5 +1,5 @@
 import type { Locale } from '../../i18n';
-import { translations } from '../../i18n';
+import { MergeChoice } from '../../restore/merge/types';
 import type { PowerUpFrame } from '../../trello/sdk';
 import { LocalJournalStore } from '../../restore/journal';
 import { downloadJson } from '../download';
@@ -16,7 +16,7 @@ interface Dependencies {
   changed: () => void;
 }
 
-/** User-triggered file validation, reviewed creation, cancellation, and local continuation */
+/** User-triggered file validation, conflict review, current-board merging, and local continuation */
 export class RestoreUI {
   #restoreActive = false;
   readonly #view: RestoreView;
@@ -28,7 +28,7 @@ export class RestoreUI {
   constructor(private readonly dependencies: Dependencies) {
     this.#view = new RestoreView(dependencies.document);
     this.#session = new RestoreSession({
-      context: (signal) => restoreConnection(dependencies.getFrame(), window.location.href, signal),
+      context: (signal) => restoreConnection(dependencies.getFrame(), signal),
       authorize: (signal) => authorizeRestore(dependencies.getFrame(), signal),
       store: () => new LocalJournalStore(window.localStorage),
       changed: dependencies.changed,
@@ -42,7 +42,27 @@ export class RestoreUI {
     this.#view.element('restore-resume', HTMLButtonElement).addEventListener('click', () => {
       void this.#run(true);
     });
+    this.#view.element('restore-analyze', HTMLButtonElement).addEventListener('click', () => {
+      this.#view.element('restore-confirm', HTMLInputElement).checked = false;
+      if (!dependencies.exportBusy()) void this.#session.analyze();
+    });
+    this.#view.element('restore-conflicts', HTMLElement).addEventListener('change', (event) => {
+      const input = event.target;
+      if (input instanceof HTMLSelectElement && input.dataset.conflictKey) {
+        this.#view.element('restore-confirm', HTMLInputElement).checked = false;
+        this.#session.resolve(input.dataset.conflictKey, input.value);
+      }
+    });
+    for (const [id, choice] of [
+      ['restore-keep-all', MergeChoice.Current],
+      ['restore-use-all', MergeChoice.Snapshot],
+    ] as const)
+      this.#view.element(id, HTMLButtonElement).addEventListener('click', () => {
+        this.#view.element('restore-confirm', HTMLInputElement).checked = false;
+        this.#session.resolveValues(choice);
+      });
     this.#view.element('restore-connect', HTMLButtonElement).addEventListener('click', () => {
+      this.#view.element('restore-confirm', HTMLInputElement).checked = false;
       if (!dependencies.exportBusy()) void this.#session.connect();
     });
     this.#view
@@ -93,13 +113,7 @@ export class RestoreUI {
     const file = this.#view.element('restore-file', HTMLInputElement).files?.[0];
     if (!file || this.busy || this.dependencies.exportBusy()) return;
     this.#view.element('restore-confirm', HTMLInputElement).checked = false;
-    const imported = await this.#session.load(file);
-    if (imported)
-      this.#view.element('restore-name', HTMLInputElement).value =
-        `${imported.snapshot.board.name} ${translations[this.dependencies.getLocale()].restoreNameSuffix}`.slice(
-          0,
-          256,
-        );
+    await this.#session.load(file);
   }
 
   async #run(resume: boolean): Promise<void> {
@@ -111,11 +125,7 @@ export class RestoreUI {
       !this.model.context
     )
       return;
-    const name = resume
-      ? this.model.previous?.target?.name
-      : this.#view.element('restore-name', HTMLInputElement).value;
-    if (name === undefined) return;
-    if (await this.#session.run(name, this.dependencies.getLocale(), resume))
+    if (await this.#session.run(this.dependencies.getLocale(), resume))
       this.#view.element('restore-confirm', HTMLInputElement).checked = false;
   }
 }

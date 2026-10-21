@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ApiError } from './errors';
 import { ApiErrorCode } from '../shared/error-codes';
 import { CustomFieldType } from '../snapshot/codes';
+import { CheckItemState, TrelloActionType } from './types';
 
 const id = z.string().regex(/^[a-f0-9]{24}$/);
 const position = z.number();
@@ -55,7 +56,7 @@ export const checklistSchema = z.object({
       id,
       name: z.string(),
       pos: position,
-      state: z.enum(['complete', 'incomplete']),
+      state: z.enum(CheckItemState),
       due: date.optional(),
       idMember: id.nullable().optional(),
     }),
@@ -64,7 +65,7 @@ export const checklistSchema = z.object({
 export const commentSchema = z.object({
   id,
   date: z.string(),
-  type: z.literal('commentCard'),
+  type: z.literal(TrelloActionType.Comment),
   data: z.object({ text: z.string(), card: z.object({ id }), board: z.object({ id }) }),
   memberCreator: z.object({ id, fullName: z.string() }).nullable().optional(),
 });

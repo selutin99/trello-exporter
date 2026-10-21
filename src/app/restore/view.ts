@@ -1,4 +1,7 @@
-import { canResumeJournal } from '../../restore/journal';
+import { MergeActionKind } from '../../restore/merge/types';
+import { RestoreMode } from '../../restore/codes';
+import { renderConflicts } from './conflicts-view';
+import { canResumeJournal, hasUncertainWrite } from '../../restore/journal';
 import type { Locale } from '../../i18n';
 import { translations } from '../../i18n';
 import { restorationPlan } from '../../restore/plan';
@@ -26,7 +29,7 @@ export class RestoreView {
     return element;
   }
   /**
-   * Updates the preview without resetting user name/confirmation inputs
+   * Updates the comparison without resetting the current confirmation input
    * @param model - Current restoration state
    * @param locale - Shared product language
    * @param embedded - Whether the SDK frame is available
@@ -42,25 +45,50 @@ export class RestoreView {
     const busy = model.busy || exportBusy;
     this.element('restore-status', HTMLElement).textContent = text[model.message];
     this.element('restore-file', HTMLInputElement).disabled = busy;
-    this.element('restore-name', HTMLInputElement).disabled = busy;
+    this.element('restore-analyze', HTMLButtonElement).disabled =
+      busy || !model.imported || !embedded;
     this.element('restore-confirm', HTMLInputElement).disabled = busy;
     this.element('restore-preview', HTMLElement).hidden = !model.imported;
     this.element('restore-cancel', HTMLButtonElement).hidden = !model.busy;
-    this.element('restore-connect', HTMLButtonElement).hidden = !embedded || !!model.context;
+    this.element('restore-connect', HTMLButtonElement).hidden = !embedded || !!model.plan;
     this.element('restore-connect', HTMLButtonElement).disabled = busy;
     const confirmed = this.element('restore-confirm', HTMLInputElement).checked;
     this.element('restore-start', HTMLButtonElement).disabled =
-      busy || !model.imported || !model.context || !confirmed;
+      busy ||
+      hasUncertainWrite(model.previous) ||
+      !model.imported ||
+      !model.context ||
+      !model.plan ||
+      model.plan.unresolved > 0 ||
+      !confirmed;
     const resumable =
       model.imported &&
       model.context &&
       canResumeJournal(model.previous, model.imported.checksum, model.context);
     this.element('restore-resume', HTMLButtonElement).hidden = !resumable;
     this.element('restore-resume', HTMLButtonElement).disabled =
-      busy || !confirmed || !model.context;
+      busy || !confirmed || !model.context || !model.plan || model.plan.unresolved > 0;
     this.element('restore-previous', HTMLElement).hidden =
       !model.previous ||
+      model.previous.mode !== RestoreMode.Merge ||
+      model.previous.target?.id !== model.context?.boardId ||
       [RestoreStatus.Complete, RestoreStatus.Partial].includes(model.previous.status);
+    this.element('restore-merge-plan', HTMLElement).hidden = !model.plan;
+    this.element('restore-destination', HTMLElement).textContent = model.current
+      ? `${text.restoreDestination}: ${model.current.board.name}`
+      : text.restoreUnavailable;
+    if (model.plan) {
+      const number = new Intl.NumberFormat(locale);
+      const creates = model.plan.actions.filter(
+        (action) => action.kind !== MergeActionKind.Update,
+      ).length;
+      const updates = model.plan.actions.length - creates;
+      this.element('restore-merge-counts', HTMLElement).textContent =
+        `${text.restoreCreates}: ${number.format(creates)} · ${text.restoreUpdates}: ${number.format(updates)} · ${text.restoreUnchanged}: ${number.format(model.plan.unchanged)} · ${text.restoreUnresolved}: ${number.format(model.plan.unresolved)}`;
+    }
+    for (const id of ['restore-keep-all', 'restore-use-all'])
+      this.element(id, HTMLButtonElement).disabled = busy;
+    renderConflicts(this.element('restore-conflicts', HTMLElement), model, locale, busy);
     if (model.imported) {
       const plan = restorationPlan(model.imported);
       this.element('restore-source', HTMLElement).textContent = model.imported.snapshot.board.name;

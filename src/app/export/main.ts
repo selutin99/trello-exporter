@@ -1,3 +1,4 @@
+import { isId } from '../../api/validation';
 import { BoardReader } from '../../api/reader';
 import { chooseLocale, translations } from '../../i18n';
 import { runtimeSettings } from '../../trello/runtime';
@@ -104,12 +105,13 @@ await pageReady(window);
 if (window.TrelloPowerUp && window.parent !== window) {
   try {
     const settings = runtimeSettings(window.location.href);
-    if (!settings.boardReference || !settings.clientId)
-      throw new Error('Missing public configuration');
+    if (!settings.clientId) throw new Error('Missing public configuration');
     const activeFrame = window.TrelloPowerUp.iframe(settings.oauthOptions);
+    const boardId = activeFrame.getContext().board;
+    if (!isId(boardId)) throw new Error('Missing current board context');
     frame = activeFrame;
     reader = new BoardReader({
-      boardReference: settings.boardReference,
+      boardReference: boardId,
       getAccessToken: () => activeFrame.getOAuth2ApiClient().getAccessToken(),
     });
     let initialized = false;

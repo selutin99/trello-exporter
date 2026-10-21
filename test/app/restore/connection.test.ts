@@ -7,19 +7,14 @@ import { installSdk } from '../../helpers/browser';
 
 afterEach(() => vi.unstubAllGlobals());
 
-test('missing frame, source identity, or public configuration cannot resolve a restore writer', async () => {
+test('missing frame or SDK identity cannot resolve a merge writer', async () => {
   const { frame } = installSdk();
   const signal = new AbortController().signal;
-  const href = 'https://example.invalid/export.html?board=TEST0001';
-  for (const [sdk, url] of [
-    [null, href],
-    [frame, 'https://example.invalid/export.html'],
-  ] as const)
-    await expect(restoreConnection(sdk, url, signal)).rejects.toMatchObject({
-      code: RestoreErrorCode.InvalidPlan,
-    });
+  await expect(restoreConnection(null, signal)).rejects.toMatchObject({
+    code: RestoreErrorCode.InvalidPlan,
+  });
   frame.getContext.mockReturnValue({});
-  await expect(restoreConnection(frame, href, signal)).rejects.toMatchObject({
+  await expect(restoreConnection(frame, signal)).rejects.toMatchObject({
     code: RestoreErrorCode.InvalidPlan,
   });
   await expect(authorizeRestore(null, signal)).rejects.toMatchObject({
@@ -42,3 +37,16 @@ test.each([false, true])(
     await Promise.resolve();
   },
 );
+
+test('the SDK board is the destination regardless of a previously configured board URL', async () => {
+  const { restorationFixture } = await import('../../helpers/restore');
+  const { sourceBoard } = await import('../../helpers/snapshot');
+  const { frame } = installSdk();
+  const fixture = restorationFixture();
+  frame.getContext.mockReturnValue({ board: sourceBoard.id });
+  vi.stubGlobal('fetch', fixture.fetchImpl);
+  window.history.replaceState(null, '', '/export.html?board=OTHER001');
+  const connection = await restoreConnection(frame, new AbortController().signal);
+  expect(connection.context.boardId).toBe(sourceBoard.id);
+  expect(fixture.calls.every((call) => !call.path.includes('OTHER001'))).toBe(true);
+});
