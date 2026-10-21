@@ -1,15 +1,15 @@
 import { expect, test } from 'vitest';
 import { unzipSync, strFromU8 } from 'fflate';
 import { buildArchive, MAXIMUM_ARCHIVE_BYTES, sha256 } from '../../src/snapshot/archive';
-import { createDemoCapture, demoFileReader } from '../../src/demo/preview';
-import { demoFiles } from '../../src/demo/data';
+import { createSyntheticCapture, syntheticFileReader } from '../helpers/board-capture';
+import { syntheticFiles } from '../helpers/board-data';
 import { ApiError, ScopeError } from '../../src/api/errors';
 import { ApiErrorCode } from '../../src/shared/error-codes';
 import type { Snapshot, SnapshotFile } from '../../src/snapshot/types';
 
 test('ZIP contains exactly the manifest entries, verifies every digest, and preserves original file bytes', async () => {
-  const capture = createDemoCapture();
-  const blob = await buildArchive(capture, demoFileReader);
+  const capture = createSyntheticCapture();
+  const blob = await buildArchive(capture, syntheticFileReader);
   const entries = unzipSync(new Uint8Array(await blob.arrayBuffer()));
   const manifest = JSON.parse(strFromU8(entries['manifest.json']!)) as {
     snapshotId: string;
@@ -25,7 +25,7 @@ test('ZIP contains exactly the manifest entries, verifies every digest, and pres
     expect(bytes.length).toBe(file.size);
     expect(await sha256(new Uint8Array(bytes))).toBe(file.sha256);
   }
-  const sources = demoFiles();
+  const sources = syntheticFiles();
   for (const attachment of snapshot.attachments) {
     const original = sources.find((file) => file.name === attachment.name)!;
     expect(entries[attachment.file!.path]).toEqual(original.bytes);
@@ -36,7 +36,7 @@ test('ZIP contains exactly the manifest entries, verifies every digest, and pres
 });
 
 test('failed downloads and byte-size mismatches produce a useful partial archive', async () => {
-  const capture = createDemoCapture();
+  const capture = createSyntheticCapture();
   let calls = 0;
   const blob = await buildArchive(capture, {
     file: async (_card, _attachment, budget) => {
@@ -54,7 +54,7 @@ test('failed downloads and byte-size mismatches produce a useful partial archive
 
 test('foreign scope and cancellation terminate packaging instead of returning a download', async () => {
   await expect(
-    buildArchive(createDemoCapture(), {
+    buildArchive(createSyntheticCapture(), {
       file: async () => {
         throw new ScopeError();
       },
@@ -62,7 +62,7 @@ test('foreign scope and cancellation terminate packaging instead of returning a 
   ).rejects.toThrow(ScopeError);
   const active = new AbortController();
   await expect(
-    buildArchive(createDemoCapture(), demoFileReader, {
+    buildArchive(createSyntheticCapture(), syntheticFileReader, {
       signal: active.signal,
       onProgress: () => active.abort(),
     }),
@@ -70,9 +70,9 @@ test('foreign scope and cancellation terminate packaging instead of returning a 
 });
 
 test('an empty attachment set still yields a valid ZIP with no file warnings', async () => {
-  const capture = createDemoCapture();
+  const capture = createSyntheticCapture();
   capture.snapshot.attachments = [];
-  const blob = await buildArchive(capture, demoFileReader);
+  const blob = await buildArchive(capture, syntheticFileReader);
   expect(Object.keys(unzipSync(new Uint8Array(await blob.arrayBuffer()))).sort()).toEqual([
     'manifest.json',
     'snapshot.json',

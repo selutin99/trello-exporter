@@ -1,19 +1,19 @@
-import type { CapturedBoard } from '../snapshot/capture';
-import { finishCapture } from '../snapshot/capture';
-import { AttachmentKind, CaptureOutcome } from '../snapshot/codes';
-import type { BoardReader } from '../api/reader';
-import { demoCards, demoFiles, demoLabels, demoLists } from './data';
-import { product } from '../config/product';
+import type { CapturedBoard } from '../../src/snapshot/capture';
+import { finishCapture } from '../../src/snapshot/capture';
+import { AttachmentKind, CaptureOutcome, CustomFieldType } from '../../src/snapshot/codes';
+import type { BoardReader } from '../../src/api/reader';
+import { syntheticCards, syntheticFiles, syntheticLabels, syntheticLists } from './board-data';
+import { product } from '../../src/config/product';
 
 const id = (number: number) => number.toString(16).padStart(24, '0');
 
 /**
- * Builds a clearly synthetic preview with no network or account access
- * @returns A new preview capture, safe to mutate during ZIP packaging
+ * Builds a synthetic capture fixture without network or account access
+ * @returns A fresh capture fixture, safe to mutate during ZIP packaging
  */
-export function createDemoCapture(): CapturedBoard {
+export function createSyntheticCapture(): CapturedBoard {
   const now = new Date().toISOString();
-  const files = demoFiles();
+  const files = syntheticFiles();
   const snapshot: CapturedBoard['snapshot'] = {
     format: 'trello-exporter.snapshot',
     formatVersion: '0.1.0',
@@ -34,9 +34,14 @@ export function createDemoCapture(): CapturedBoard {
       url: null,
       closed: false,
     },
-    lists: demoLists.map((name, order) => ({ id: id(10 + order), name, order, closed: false })),
+    lists: syntheticLists.map((name, order) => ({
+      id: id(10 + order),
+      name,
+      order,
+      closed: false,
+    })),
     cards: [],
-    labels: demoLabels.map((label, index) => ({ id: id(20 + index), ...label })),
+    labels: syntheticLabels.map((label, index) => ({ id: id(20 + index), ...label })),
     members: [
       { id: id(30), username: 'demo-designer', displayName: 'Demo designer' },
       { id: id(31), username: 'demo-engineer', displayName: 'Demo engineer' },
@@ -45,14 +50,14 @@ export function createDemoCapture(): CapturedBoard {
       {
         id: id(40),
         name: 'Priority',
-        type: 'list',
+        type: CustomFieldType.List,
         order: 0,
         options: [
           { id: id(41), text: 'Normal', color: 'blue', order: 0 },
           { id: id(42), text: 'High', color: 'red', order: 1 },
         ],
       },
-      { id: id(45), name: 'Working note', type: 'text', order: 1, options: [] },
+      { id: id(45), name: 'Working note', type: CustomFieldType.Text, order: 1, options: [] },
     ],
     customFieldValues: [],
     checklists: [],
@@ -63,7 +68,7 @@ export function createDemoCapture(): CapturedBoard {
   };
   const uploads: CapturedBoard['uploads'] = new Map();
   const positions = new Map<number, number>();
-  for (const [index, card] of demoCards.entries()) {
+  for (const [index, card] of syntheticCards.entries()) {
     const cardId = id(100 + index);
     const order = positions.get(card.list) ?? 0;
     positions.set(card.list, order + 1);
@@ -135,10 +140,10 @@ export function createDemoCapture(): CapturedBoard {
   return { snapshot, uploads };
 }
 
-/** Original synthetic bytes for preview ZIP files, without an HTTP implementation */
-export const demoFileReader: Pick<BoardReader, 'file'> = {
+/** Original synthetic bytes for archive tests without an HTTP implementation */
+export const syntheticFileReader: Pick<BoardReader, 'file'> = {
   file: (_cardId, attachment) => {
-    const file = demoFiles().find((file) => file.name === attachment.name);
+    const file = syntheticFiles().find((file) => file.name === attachment.name);
     if (!file) return Promise.reject(new Error('Unknown synthetic file'));
     return Promise.resolve(file.bytes);
   },

@@ -23,11 +23,25 @@ export interface PreparedExport {
   filename: string;
   format: ExportFormat;
 }
-export interface ExportModel {
-  state: ExportState;
-  board: BoardOverview | null;
+interface ExportSelection {
   format: ExportFormat;
   progress: ExportProgress | null;
-  result: PreparedExport | null;
-  demo: boolean;
 }
+export type ExportModel = ExportSelection &
+  (
+    | {
+        state: ExportState.Complete | ExportState.Partial;
+        board: BoardOverview;
+        result: PreparedExport;
+      }
+    | {
+        state: ExportState.Ready;
+        board: BoardOverview;
+        result: null;
+      }
+    | {
+        state: Exclude<ExportState, ExportState.Complete | ExportState.Partial | ExportState.Ready>;
+        board: BoardOverview | null;
+        result: null;
+      }
+  );

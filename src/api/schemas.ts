@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ApiError } from './errors';
 import { ApiErrorCode } from '../shared/error-codes';
+import { CustomFieldType } from '../snapshot/codes';
 
 const id = z.string().regex(/^[a-f0-9]{24}$/);
 const position = z.number();
@@ -72,7 +73,7 @@ export const memberSchema = z.object({ id, username: z.string(), fullName: z.str
 export const customFieldSchema = z.object({
   id,
   name: z.string(),
-  type: z.enum(['checkbox', 'date', 'list', 'number', 'text']),
+  type: z.enum(CustomFieldType),
   pos: position,
   options: z
     .array(

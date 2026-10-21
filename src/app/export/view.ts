@@ -1,7 +1,7 @@
 import { localizePage, translations } from '../../i18n';
 import type { Locale } from '../../i18n';
 import { ExportFormat, IssueCode } from '../../snapshot/codes';
-import type { ExportModel } from './types';
+import type { ExportModel, PreparedExport } from './types';
 import { ExportState } from './types';
 
 /** Text-only DOM rendering for the export workflow */
@@ -32,12 +32,11 @@ export class ExportView {
    * @param connected - Whether an embedded Trello frame is available
    * @param busy - Whether an operation is running
    */
-  render(locale: Locale, model: ExportModel, connected: boolean, busy: boolean): void {
+  render(locale: Locale, model: Readonly<ExportModel>, connected: boolean, busy: boolean): void {
     localizePage(locale, this.document);
     const text = translations[locale];
     this.element('language', HTMLSelectElement).value = locale;
-    this.element('demo-notice', HTMLElement).hidden = !model.demo;
-    this.element('standalone', HTMLElement).hidden = connected || model.demo;
+    this.element('standalone', HTMLElement).hidden = connected;
     this.element('connection', HTMLElement).hidden = !!model.board || !connected;
     this.element('connect', HTMLButtonElement).disabled = !connected || busy;
     this.element('connection-status', HTMLElement).textContent = text[model.state];
@@ -46,7 +45,7 @@ export class ExportView {
       ? `${text.exportLists}: ${model.board.lists} · ${text.exportCardCount}: ${model.board.cards}`
       : text.exportAuthRequired;
     const refresh = this.element('refresh', HTMLButtonElement);
-    refresh.hidden = !model.board || model.demo;
+    refresh.hidden = !model.board;
     refresh.disabled = busy;
     this.element('formats', HTMLFieldSetElement).disabled = busy;
     for (const input of this.document.querySelectorAll<HTMLInputElement>('input[name="format"]'))
@@ -75,13 +74,11 @@ export class ExportView {
     if (model.progress) progress.value = model.progress.current;
     else progress.removeAttribute('value');
     this.element('result', HTMLElement).hidden = !model.result;
-    if (model.result) this.#result(locale, model);
+    if (model.result) this.#result(locale, model.result, model.state === ExportState.Partial);
   }
 
-  #result(locale: Locale, model: ExportModel): void {
-    const result = model.result!;
+  #result(locale: Locale, result: PreparedExport, partial: boolean): void {
     const text = translations[locale];
-    const partial = model.state === ExportState.Partial;
     this.element('result-title', HTMLElement).textContent =
       text[partial ? 'exportPartial' : 'exportReady'];
     this.element('result-note', HTMLElement).textContent =
@@ -106,7 +103,7 @@ export class ExportView {
     this.element('file-size', HTMLElement).textContent =
       `${result.format.toUpperCase()} · ${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(result.blob.size / 1024)} KiB`;
     this.element('save', HTMLButtonElement).textContent =
-      `${text.exportDownload} ${result.format === ExportFormat.Zip ? 'ZIP' : 'JSON'}`;
+      `${text.exportDownload} ${result.format.toUpperCase()}`;
     const warnings = this.element('warning-list', HTMLElement);
     warnings.replaceChildren();
     const messages = {

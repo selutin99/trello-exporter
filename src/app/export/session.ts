@@ -1,31 +1,36 @@
 import { ScopeError } from '../../api/errors';
 import type { BoardReader } from '../../api/reader';
-import { buildArchive, jsonBytes } from '../../snapshot/archive';
+import { prepareExport } from '../../export/prepare';
+import { Locale } from '../../i18n';
 import { captureBoard } from '../../snapshot/capture';
-import type { CapturedBoard } from '../../snapshot/capture';
 import { CaptureOutcome, ExportFormat } from '../../snapshot/codes';
 import { ExportState } from './types';
 import type { ExportModel } from './types';
 
 /** One cancellable export at a time; content remains in this window only */
 export class ExportSession {
-  readonly model: ExportModel = {
+  #model: ExportModel = {
     state: ExportState.Disconnected,
     board: null,
     format: ExportFormat.Zip,
     progress: null,
     result: null,
-    demo: false,
   };
   #active: AbortController | null = null;
-  #demoCapture: (() => CapturedBoard) | null = null;
-  #demoReader: Pick<BoardReader, 'file'> | null = null;
 
   /**
    * Creates an export session with an explicit UI notification boundary
    * @param changed - Called when visible session state changes
    */
   constructor(private readonly changed: () => void) {}
+
+  /**
+   * Exposes a coherent state whose completed outcomes always include a prepared export
+   * @returns Current read-only session state
+   */
+  get model(): Readonly<ExportModel> {
+    return this.#model;
+  }
 
   /**
    * Reports whether a load or export is in progress
@@ -41,9 +46,16 @@ export class ExportSession {
    */
   selectFormat(format: ExportFormat): void {
     if (this.busy) return;
-    this.model.format = format;
-    this.model.result = null;
-    if (this.model.board) this.model.state = ExportState.Ready;
+    const model = this.#model;
+    if (model.board)
+      this.#model = {
+        ...model,
+        format,
+        result: null,
+        board: model.board,
+        state: ExportState.Ready,
+      };
+    else this.#model = { ...model, format };
     this.changed();
   }
 
@@ -59,64 +71,53 @@ export class ExportSession {
       const lists = await reader.lists({ signal });
       const cards = await reader.cards({ signal });
       signal.throwIfAborted();
-      this.model.board = { name: board.name, lists: lists.length, cards: cards.length };
-      this.model.state = ExportState.Ready;
+      this.#model = {
+        ...this.#model,
+        result: null,
+        board: { name: board.name, lists: lists.length, cards: cards.length },
+        state: ExportState.Ready,
+      };
     });
   }
 
   /**
-   * Enables an explicitly labelled synthetic preview without Trello access
-   * @param capture - Fresh synthetic capture factory
-   * @param fileReader - Original synthetic file bytes
-   */
-  useDemo(capture: () => CapturedBoard, fileReader: Pick<BoardReader, 'file'>): void {
-    if (this.busy) return;
-    this.#demoCapture = capture;
-    this.#demoReader = fileReader;
-    const { snapshot } = capture();
-    this.model.demo = true;
-    this.model.board = {
-      name: snapshot.board.name,
-      lists: snapshot.lists.length,
-      cards: snapshot.cards.length,
-    };
-    this.model.state = ExportState.Ready;
-    this.changed();
-  }
-
-  /**
    * Builds a fresh snapshot and prepares a separate, user-initiated download
-   * @param reader - Live scoped reader, or a file-only synthetic preview boundary
+   * @param reader - Live board-scoped reader, or null before connection
    * @param contextBoardId - Live SDK board identity
+   * @param locale - Product language for readable export labels
    * @returns Completion after the archive is ready or an error is displayed
    */
-  async prepare(reader: BoardReader | null, contextBoardId: string): Promise<void> {
-    if (!this.model.board || (!reader && !this.#demoCapture)) return;
+  async prepare(
+    reader: BoardReader | null,
+    contextBoardId: string,
+    locale: Locale = Locale.English,
+  ): Promise<void> {
+    const board = this.#model.board;
+    if (!board || !reader) return;
     await this.#run(ExportState.Running, async (signal) => {
       const options = {
         signal,
         onProgress: (progress: NonNullable<ExportModel['progress']>) => {
           if (signal.aborted) return;
-          this.model.progress = progress;
+          this.#model = { ...this.#model, progress };
           this.changed();
         },
       };
-      const capture = this.#demoCapture
-        ? this.#demoCapture()
-        : await captureBoard(reader!, contextBoardId, options);
+      const capture = await captureBoard(reader, contextBoardId, options);
       const format = this.model.format;
-      const blob =
-        format === ExportFormat.Zip
-          ? await buildArchive(capture, this.#demoReader ?? reader!, options)
-          : new Blob([jsonBytes(capture.snapshot)], { type: 'application/json;charset=utf-8' });
+      const blob = await prepareExport(capture, format, reader, locale, options);
       signal.throwIfAborted();
       const snapshot = capture.snapshot;
       const date = new Date().toISOString().replaceAll(':', '-').slice(0, 19);
-      this.model.result = { blob, snapshot, format, filename: `trello-exporter-${date}.${format}` };
-      this.model.state =
-        snapshot.capture.outcome === CaptureOutcome.Complete
-          ? ExportState.Complete
-          : ExportState.Partial;
+      this.#model = {
+        ...this.#model,
+        board,
+        result: { blob, snapshot, format, filename: `trello-exporter-${date}.${format}` },
+        state:
+          snapshot.capture.outcome === CaptureOutcome.Complete
+            ? ExportState.Complete
+            : ExportState.Partial,
+      };
     });
   }
 
@@ -124,26 +125,28 @@ export class ExportSession {
   cancel(): void {
     this.#active?.abort();
     this.#active = null;
-    this.model.result = null;
-    this.model.progress = null;
-    this.model.state = ExportState.Cancelled;
+    this.#model = { ...this.#model, result: null, progress: null, state: ExportState.Cancelled };
     this.changed();
   }
 
-  async #run(state: ExportState, task: (signal: AbortSignal) => Promise<void>): Promise<void> {
+  async #run(
+    state: ExportState.Loading | ExportState.Running,
+    task: (signal: AbortSignal) => Promise<void>,
+  ): Promise<void> {
     if (this.busy) return;
     const active = new AbortController();
     this.#active = active;
-    this.model.result = null;
-    this.model.progress = null;
-    this.model.state = state;
+    this.#model = { ...this.#model, result: null, progress: null, state };
     this.changed();
     try {
       await task(active.signal);
     } catch (error) {
       if (!active.signal.aborted)
-        this.model.state =
-          error instanceof ScopeError ? ExportState.ScopeFailed : ExportState.Failed;
+        this.#model = {
+          ...this.#model,
+          result: null,
+          state: error instanceof ScopeError ? ExportState.ScopeFailed : ExportState.Failed,
+        };
     } finally {
       if (this.#active === active) {
         this.#active = null;

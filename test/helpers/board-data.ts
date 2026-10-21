@@ -1,12 +1,12 @@
-export const demoLists = ['Ideas', 'In progress', 'Done'];
-export const demoLabels = [
+export const syntheticLists = ['Ideas', 'In progress', 'Done'];
+export const syntheticLabels = [
   { name: 'Design', color: 'purple' },
   { name: 'Engineering', color: 'blue' },
   { name: 'Launch', color: 'green' },
 ];
 
-/** Synthetic content shared by the local preview and the explicit test-board seed */
-export const demoCards = [
+/** Synthetic board content for deterministic export and restoration tests */
+export const syntheticCards = [
   {
     name: 'Plan the studio launch',
     list: 0,
@@ -99,7 +99,11 @@ export const demoCards = [
  * Creates small, deterministic files without reading the user's filesystem
  * @returns Original synthetic attachment bytes and MIME types
  */
-export function demoFiles(): { name: string; mimeType: string; bytes: Uint8Array<ArrayBuffer> }[] {
+export function syntheticFiles(): {
+  name: string;
+  mimeType: string;
+  bytes: Uint8Array<ArrayBuffer>;
+}[] {
   const encode = (text: string) => new TextEncoder().encode(text);
   return [
     {

@@ -33,6 +33,9 @@ const safeCodes: ReadonlySet<string> = new Set([
   ...Object.values(ScopeErrorCode),
   ...Object.values(ProbeErrorCode),
 ]);
+function isDiagnosticCode(value: unknown): value is DiagnosticCode {
+  return typeof value === 'string' && safeCodes.has(value);
+}
 export interface DiagnosticError {
   errorCode: DiagnosticCode;
   status: number | null;
@@ -49,9 +52,9 @@ export function diagnosticError(error: unknown): DiagnosticError {
   try {
     const code: unknown = 'code' in error ? error.code : undefined;
     const status: unknown = 'status' in error ? error.status : undefined;
-    const known = typeof code === 'string' && safeCodes.has(code);
+    const known = isDiagnosticCode(code);
     return {
-      errorCode: known ? (code as DiagnosticCode) : ProbeErrorCode.CheckFailed,
+      errorCode: known ? code : ProbeErrorCode.CheckFailed,
       status:
         known &&
         typeof status === 'number' &&

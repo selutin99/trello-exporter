@@ -1,18 +1,21 @@
 # Application structure
 
-The application implements a read-only JSON/ZIP export pipeline and a synthetic
-local demo, with separate historical compatibility diagnostics. It uses strict
-TypeScript, Vite for a static multi-page build, Zod for API projections, fflate
-for ZIP storage, and Vitest for offline tests with synthetic data. Live export
-validation and restoration are pending.
+The application implements JSON/ZIP capture and new-board restoration, alongside
+Markdown/PDF/XLSX/CSV exports. Historical compatibility
+diagnostics remain separate. Strict TypeScript, Vite, Zod, fflate, pdfmake,
+write-excel-file, and Vitest support the static client. Full live export/restore
+validation remains pending.
 
 ```text
 src/
   api/                 scoped API client, transport, validation, and retry policy
   app/                 diagnostic wiring and shared local downloads
     export/            export entry point, session state, and text-only DOM view
-  snapshot/            capture, normalization, archive packaging, types, and codes
-  demo/                synthetic board content and local preview file boundary
+    restore/           DOM controller/view, operation session, and SDK connection boundary
+  export/              lazy document/spreadsheet converters and bundled PDF fonts
+  import/              bounded JSON/ZIP validation, relationships, and checksums
+  restore/             target-only writer, engine, durable checkpoints, content, and local journal
+  snapshot/            capture, normalization, relationships, encoding, and archive packaging
   core/                checks, cancellation, reports, diagnostics, and file streams
   config/              reviewed public service URLs and HTML URL placeholders
   shared/              stable error code enums shared across domains
@@ -27,7 +30,7 @@ src/
     index.ts           locale selection and safe text rendering
     types.ts           locale enum and message types
 test/                  mirrors src/ directories and module names
-  helpers/             shared synthetic browser and SDK setup
+  helpers/             synthetic board captures/file bytes, browser setup, and SDK boundaries
   config/              build configuration checks
   repository/          repository hygiene checks
 vite.config.ts         local build configuration and legacy URL compatibility
@@ -62,6 +65,44 @@ information. `skipLibCheck` skips dependency declaration checking, not strict
 checking of this project's code and tests. TypeScript 6.0.3 matches the supported
 range of the installed typescript-eslint release.
 
+The restoration UI controller binds events and reviewed inputs. Its session owns
+validation, authorization, cancellation, and reports through explicit context,
+consent, storage, and notification callbacks; it has no DOM or SDK dependency.
+The SDK adapter returns the writer together with the context it verified and
+consumes late OAuth completion after cancellation. Activity is derived from the
+active operation, while tab selection belongs to the UI controller.
+
+The restoration engine orders the operation and classifies its outcome.
+`restore/checkpoint.ts` owns durable pending/completed mappings: required steps
+return an identity, optional steps can record an explicit omission, and uncertain
+writes propagate without retry. HTTP errors retain their request method so an
+ownership-read failure cannot be treated as an optional write rejection.
+Cancellation observed before dispatch is distinct from an uncertain write.
+Dispatched writes retain an observed response or become uncertain when their
+response cannot be read. Content, custom-field option mapping, and comment
+summaries depend on this execution contract, never on the engine implementation.
+The local journal's continuation predicate is shared by the view and engine.
+Serialized resource keys, report statuses, snapshot/archive versions, and OAuth
+paths remain unchanged. The optional journal `commentLocale` field preserves
+comment chunk boundaries after a language change; legacy comment progress without
+this metadata cannot be continued by guessing.
+
+Export state is a discriminated union: ready states include a board and completed
+states also include a prepared download. Snapshot relationship indexes are built
+once per export/restore consumer and preserve source collection order; callers
+apply sibling ordering where the format requires it. They avoid repeated scans
+without changing the serialized snapshot. UTF-8 JSON encoding and SHA-256 hashing
+are independent of ZIP writing, so the importer does not depend on the archive
+producer. Shared text chunking preserves surrogate pairs for both comment summaries
+and spreadsheet continuation rows.
+
+Synthetic board content belongs to `test/helpers/board-data.ts`; the capture
+factory and file boundary live in `test/helpers/board-capture.ts`. They are used
+by automated export/import/restore tests and are never imported by `src/`.
+The product has no sample-board session branch or demo query parameter. Sample
+board fixtures are excluded from the production bundle. Live SDK/API validation takes place in Trello
+on the explicitly designated board and new restoration boards only.
+
 ## Service configuration
 
 `src/config/services.ts` is the single source for Trello API/board origins, the
@@ -93,7 +134,7 @@ change Vite's `base` when choosing a different hosting path.
 The build also creates legacy `/prototype/*.html` aliases without redirects, so
 OAuth query and fragment data can reach the official SDK unchanged on a compatible
 host. The separate CD workflow publishes only the checked CI build to GitHub Pages.
-The root opens the synthetic demo; registered connector/callback paths serve the
+The root opens the export interface; registered connector/callback paths serve the
 Power-Up inside Trello. CI itself performs no deployment, and `.nojekyll` is
 unnecessary for this artifact deployment. See [deployment](DEPLOYMENT.md).
 
@@ -111,18 +152,21 @@ Tests mirror source paths, for example `src/api/client.ts` and
 The export session owns one cancellable operation, separates preparation from
 user-initiated download, and drops late results after cancellation. Snapshot
 normalization and ZIP packaging are independent of the DOM and SDK. See
-[export boundaries](EXPORT_DEMO.md) for content, file budget, and validation limits.
+[export boundaries](EXPORT.md) for content, file budget, and validation limits.
 
 Tests exercise board scope, response validation, GET retries, uncertain POST
 results, cancellation, late SDK completion, safe diagnostics, a streamed 200 MiB
 file, DOM behavior, localization, and callback paths. SDK and HTTP boundaries are
-stubbed. These tests do not establish a working full JSON/ZIP restore cycle.
+stubbed. They cover new-board restoration and continuation offline, but do not
+establish a working full live JSON/ZIP restore cycle.
 
 CI has separate secrets and quality jobs with read-only repository permissions.
-Gitleaks scans all fetched Git history with redacted output. Its version and
-archive checksum are fixed. Action SHAs are defined once as YAML anchors in the
-workflow's top-level block; steps use short aliases because `uses:` does not
-support environment expressions. CI has no Pages or deployment permissions. The separate CD workflow receives
+The official `gitleaks/gitleaks-action@v3` scans push/PR commit ranges with
+redacted output and a fixed scanner version. Checkout retains full history so the
+Action can resolve range boundaries. A manual CI dispatch uses the Action's full
+history scan. The secrets job grants only content/PR read access; PR comments and
+SARIF artifact uploads are disabled. GitHub Actions use readable major-version
+tags directly in `uses:`. CI has no Pages or deployment permissions. The separate CD workflow receives
 publication permissions only in its deployment job after successful CI for a
 trusted push to main. It downloads the triggering run's site artifact, without
 executing a repository checkout or publishing coverage reports.

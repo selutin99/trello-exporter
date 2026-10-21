@@ -7,7 +7,7 @@ import type { ClientOptions, RequestOptions } from './types';
 
 interface TransportOptions extends RequestOptions {
   query?: Record<string, string>;
-  body?: Record<string, string>;
+  body?: Record<string, unknown> | FormData;
   binary?: boolean;
 }
 
@@ -25,7 +25,7 @@ export class Transport {
    * @param path - Fixed API path constructed by the scoped client
    * @param options - Query fields, optional request body, and cancellation signal
    * @returns Parsed response data for subsequent domain validation
-   * @throws ApiError for authentication, transport, status, or JSON failures; the signal reason on cancellation
+   * @throws ApiError for failures or unobserved dispatched writes; the signal reason for cancelled reads or cancellation before dispatch
    */
   async request(
     method: HttpMethod,
@@ -58,6 +58,7 @@ export class Transport {
       for (;;) {
         options.signal?.throwIfAborted();
         const chunk = await reader.read();
+        options.signal?.throwIfAborted();
         if (chunk.done) break;
         size += chunk.value.byteLength;
         if (size > maximumBytes) throw new ApiError(ApiErrorCode.InvalidResponse);
@@ -71,6 +72,7 @@ export class Transport {
       }
       return bytes;
     } finally {
+      // Cleanup cannot recover data; preserve the read failure or cancellation reason.
       await reader.cancel().catch(() => undefined);
       reader.releaseLock();
     }
@@ -83,7 +85,7 @@ export class Transport {
     const attempts = method === HttpMethod.Get ? 3 : 1;
     for (let attempt = 0; attempt < attempts; attempt++) {
       const response = await this.#send(method, url, options);
-      options.signal?.throwIfAborted();
+      if (method === HttpMethod.Get) options.signal?.throwIfAborted();
       if (response.ok) return response;
       const canRetry =
         method === HttpMethod.Get &&
@@ -115,6 +117,7 @@ export class Transport {
     { body, signal, binary }: TransportOptions,
   ): Promise<Response> {
     const token = await this.#token(signal);
+    const form = body instanceof FormData;
     signal?.throwIfAborted();
     try {
       // Web APIs require their original receiver, not this Transport instance.
@@ -128,13 +131,13 @@ export class Transport {
         headers: {
           Accept: binary ? 'application/octet-stream' : 'application/json',
           Authorization: `Bearer ${token}`,
-          ...(body ? { 'Content-Type': 'application/json' } : {}),
+          ...(body && !form ? { 'Content-Type': 'application/json' } : {}),
         },
-        ...(body ? { body: JSON.stringify(body) } : {}),
+        ...(body ? { body: form ? body : JSON.stringify(body) } : {}),
         ...(signal ? { signal } : {}),
       });
     } catch {
-      signal?.throwIfAborted();
+      if (method === HttpMethod.Get) signal?.throwIfAborted();
       throw new ApiError(
         method === HttpMethod.Get ? ApiErrorCode.NetworkError : ApiErrorCode.WriteResultUnknown,
       );
@@ -149,10 +152,10 @@ async function readJson(
 ): Promise<unknown> {
   try {
     const value: unknown = await response.json();
-    signal?.throwIfAborted();
+    if (method === HttpMethod.Get) signal?.throwIfAborted();
     return value;
   } catch {
-    signal?.throwIfAborted();
+    if (method === HttpMethod.Get) signal?.throwIfAborted();
     throw new ApiError(
       method === HttpMethod.Get ? ApiErrorCode.InvalidResponse : ApiErrorCode.WriteResultUnknown,
     );
@@ -160,8 +163,8 @@ async function readJson(
 }
 
 function responseError(status: number, method: HttpMethod): ApiError {
-  if (method === HttpMethod.Post && status >= 500)
-    return new ApiError(ApiErrorCode.WriteResultUnknown, status);
-  if (status === 401) return new ApiError(ApiErrorCode.AuthRequired, status);
-  return new ApiError(ApiErrorCode.RequestFailed, status);
+  if (method !== HttpMethod.Get && (status >= 500 || status === 408))
+    return new ApiError(ApiErrorCode.WriteResultUnknown, status, method);
+  if (status === 401) return new ApiError(ApiErrorCode.AuthRequired, status, method);
+  return new ApiError(ApiErrorCode.RequestFailed, status, method);
 }

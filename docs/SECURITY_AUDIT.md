@@ -30,7 +30,8 @@ URLs, application localStorage, reports, logs, or Git. A public client ID is not
 secret, but actual test deployment settings also stay out of source. Application
 localStorage may contain only a language preference and a fixed callback stage.
 
-CI scans all Git history on changes. Repository hygiene tests reject tracked
+CI uses the official Gitleaks Action to scan push/PR commit ranges; a manual CI
+dispatch scans history. Repository hygiene tests reject tracked
 runtime/generated directories, typical binary exports, and files of 1 MiB or
 larger. Introducing a new legitimate resource type requires an explicit review of
 that rule. Diagnostics allowlist named codes, API responses are projected to

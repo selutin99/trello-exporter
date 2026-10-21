@@ -1,4 +1,4 @@
-# Export implementation and local demo
+# Export implementation and validation
 
 ## Run locally
 
@@ -7,19 +7,22 @@ npm ci
 npm run dev
 ```
 
-Open `http://127.0.0.1:4173/trello-exporter/pages/export.html` and choose
-**Explore a sample board**. The preview is explicitly labelled synthetic and
-never makes Trello API requests. Choose JSON or ZIP, create a snapshot, then
-download it with a separate user action. Switch between Russian and English at
-any point. All product resources omit trailing periods.
+The local page at `http://127.0.0.1:4173/trello-exporter/pages/export.html` renders
+the interface without a Trello board context. Export is available only in the
+registered Power-Up on its configured board. There is no sample-board button or
+standalone query shortcut.
 
-Append `?demo=1` to open the synthetic preview directly. This shortcut is accepted
-only in a standalone window; it cannot replace live content inside a Trello iframe.
+Live checks use the actual SDK and REST API on one explicitly designated board,
+plus boards created by that restoration test. Do not enumerate other boards or
+put real board references, exports, attachment bytes, tokens, or recovery journals
+in public fixtures. See [deployment](DEPLOYMENT.md) for HTTPS hosting and runtime
+configuration. Full live export/restore and Desktop acceptance remain pending.
 
-The fixture has three lists, six active cards, three
-labels, six checklists with nineteen items, three comments, and three small
-attachments: a UTF-8 text brief, a CSV content plan, and an SVG illustration.
-This preview validates the interface and file packaging, not live Trello access.
+`npm run check` retains deterministic tests for all formats, import validation,
+cancellation, ownership, partial results, and uncertain writes. Synthetic board
+content and file bytes are confined to `test/helpers/` and are not imported by the
+application. The shared fixture has three lists, six active cards, three labels,
+six checklists with nineteen items, three comments, and three small attachments.
 
 For a production build, run `npm run build` then `npm run preview` and open
 `http://127.0.0.1:4173/trello-exporter/export.html`.
@@ -75,4 +78,7 @@ On October 19 the user explicitly requested restoring GitHub Pages with separate
 CD after CI to show the Power-Up on the designated test board. See
 [deployment](DEPLOYMENT.md) for hosting and runtime configuration. A hosted UI
 does not itself establish successful live content export or Desktop support.
-Restoration and CSV/XLSX/Markdown/HTML/PDF export remain planned.
+JSON/ZIP restoration and CSV/XLSX/Markdown/PDF export are now implemented and
+tested offline. The Restore tab supports local file validation in a standalone
+window; real creation requires an authorized embedded session. HTML remains planned.
+See [formats](FORMATS.md) and [restoration](RESTORATION.md).

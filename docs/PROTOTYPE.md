@@ -1,7 +1,10 @@
 # Compatibility prototype
 
-This is a compatibility check before the main MVP. Snapshot export, ZIP packaging,
-full restoration, and Trello API workload validation are not implemented yet.
+This document records historical compatibility diagnostics before the main MVP.
+The separate product now implements snapshot export, ZIP packaging, new-board
+restoration, and additional export formats; full live workload validation remains
+pending. See [export](EXPORT.md), [restoration](RESTORATION.md), and
+[formats](FORMATS.md) for current implementation boundaries.
 
 ## Implemented checks
 

@@ -88,7 +88,8 @@ export class TestBoardScope {
   rememberLists(lists: unknown): void {
     if (!Array.isArray(lists)) throw new ScopeError();
     const ids: string[] = [];
-    for (const list of lists as unknown[]) {
+    const values: unknown[] = lists;
+    for (const list of values) {
       if (!isRecord(list) || !isId(list.id)) throw new ScopeError();
       this.assertBoard(list.idBoard);
       ids.push(list.id);

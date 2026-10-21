@@ -1,11 +1,15 @@
 import type { Messages } from '../types';
 import { exportRu } from './export-ru';
 import { privacyRu } from './privacy-ru';
+import { formatsRu } from './formats-ru';
+import { restoreRu } from './restore-ru';
 
 /** Russian UI messages, checked against the English keys */
 export const ru = {
   ...exportRu,
   ...privacyRu,
+  ...formatsRu,
+  ...restoreRu,
   title: 'trello-exporter',
   badge: 'Диагностика',
   sampleText: 'Проверка локального файла / Test ✓',

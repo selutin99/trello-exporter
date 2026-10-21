@@ -1,9 +1,9 @@
 # Repository instructions
 
 - Never create or use Git worktrees. Work in the main project directory.
-- The project has a JSON/ZIP export implementation, a synthetic local demo, and
-  historical compatibility diagnostics. Keep implemented export paths distinct
-  from pending live validation, restoration, and additional formats
+- The project implements JSON/ZIP export and new-board restoration, alongside
+  Markdown/PDF/XLSX/CSV export and historical diagnostics
+  Keep implementation status distinct from pending live client/workload validation
 - Keep the product specification and snapshot format consistent when changing
   behavior or release scope.
 - Use synthetic board data in examples, fixtures, screenshots, and issues.
@@ -59,6 +59,7 @@
 - Keep CD in a separate workflow after successful CI for a push to this repository's
   main branch; deploy only that CI run's site artifact, never coverage reports or
   an unverified checkout; do not deploy pull request artifacts
-- Keep GitHub Actions pinned to commit SHAs in the workflow's centralized YAML
-  anchors; `uses:` does not support `${{ env.* }}` expressions
+- Reference GitHub Actions by readable major-version tags in `uses:`
+- Use the official Gitleaks Action for push/PR commit-range scans, with a fixed
+  scanner version, read-only permissions, and PR comments/artifact uploads disabled
 - Configure community templates only in this repository's `.github/` directory

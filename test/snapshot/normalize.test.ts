@@ -7,7 +7,7 @@ import {
   ordered,
   safeLink,
 } from '../../src/snapshot/normalize';
-import { createDemoCapture } from '../../src/demo/preview';
+import { createSyntheticCapture } from '../helpers/board-capture';
 import {
   id,
   sourceAttachment,
@@ -59,7 +59,7 @@ test('positions and ties produce contiguous, deterministic sibling order', () =>
 });
 
 test('checklist membership and comment authors tolerate departed users without broken references', () => {
-  const { snapshot } = createDemoCapture();
+  const { snapshot } = createSyntheticCapture();
   snapshot.checklists = [];
   snapshot.checklistItems = [];
   snapshot.comments = [];

@@ -1,7 +1,6 @@
 import { expect, test, vi } from 'vitest';
 import { ExportSession } from '../../../src/app/export/session';
 import { ExportFormat } from '../../../src/snapshot/codes';
-import { createDemoCapture, demoFileReader } from '../../../src/demo/preview';
 import { ExportState } from '../../../src/app/export/types';
 import { id, readerFixture } from '../../helpers/snapshot';
 
@@ -23,10 +22,8 @@ test('a session rejects concurrent work and late results after cancellation', as
   const pending = session.load(reader, id(1));
   expect(session.busy).toBe(true);
   session.selectFormat(ExportFormat.Zip);
-  session.useDemo(createDemoCapture, demoFileReader);
   await session.load(reader, id(1));
   expect(session.model.format).toBe(ExportFormat.Json);
-  expect(session.model.demo).toBe(false);
   session.cancel();
   active.abort();
   await pending;
@@ -42,4 +39,24 @@ test('scope failure is distinct from a transport failure and no download is reta
   await session.load(reader, id(1));
   expect(session.model.state).toBe(ExportState.Failed);
   expect(session.model.result).toBeNull();
+});
+
+test('refreshing board information clears a previously prepared download', async () => {
+  const session = new ExportSession(() => {});
+  const { reader } = readerFixture();
+  await session.load(reader, id(1));
+  session.selectFormat(ExportFormat.Json);
+  await session.prepare(reader, id(1));
+  expect(session.model.result).not.toBeNull();
+  await session.load(reader, id(1));
+  expect(session.model.state).toBe(ExportState.Ready);
+  expect(session.model.result).toBeNull();
+});
+
+test('format selection preserves an unavailable board outcome until the board can be loaded', async () => {
+  const session = new ExportSession(() => {});
+  await session.load(readerFixture().reader, id(99));
+  session.selectFormat(ExportFormat.Csv);
+  expect(session.model.state).toBe(ExportState.ScopeFailed);
+  expect(session.model.board).toBeNull();
 });

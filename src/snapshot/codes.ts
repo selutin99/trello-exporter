@@ -1,6 +1,18 @@
 export enum ExportFormat {
   Json = 'json',
   Zip = 'zip',
+  Markdown = 'md',
+  Pdf = 'pdf',
+  Xlsx = 'xlsx',
+  Csv = 'csv',
+}
+
+export enum CustomFieldType {
+  Checkbox = 'checkbox',
+  Date = 'date',
+  List = 'list',
+  Number = 'number',
+  Text = 'text',
 }
 
 export enum CoverageStatus {

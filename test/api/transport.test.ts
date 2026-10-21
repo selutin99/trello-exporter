@@ -1,3 +1,4 @@
+import { HttpMethod } from '../../src/api/types';
 import { ApiErrorCode } from '../../src/shared/error-codes';
 import { expect, test, vi } from 'vitest';
 import { ApiError, TestBoardApi } from '../../src/api';
@@ -82,7 +83,9 @@ test('retries stop after three GET attempts and never copy server error text', a
     fetchImpl,
     pauseImpl,
   });
-  await expect(client.verifyBoard()).rejects.toEqual(new ApiError(ApiErrorCode.RequestFailed, 503));
+  await expect(client.verifyBoard()).rejects.toEqual(
+    new ApiError(ApiErrorCode.RequestFailed, 503, HttpMethod.Get),
+  );
   expect(fetchImpl).toHaveBeenCalledTimes(3);
   expect(pauseImpl.mock.calls).toHaveLength(2);
 });
@@ -145,3 +148,88 @@ test('a malformed successful POST is uncertain and is never retried', async () =
   await expect(client.createTestList()).rejects.toMatchObject({ code: 'WRITE_RESULT_UNKNOWN' });
   expect(fetchImpl).toHaveBeenCalledTimes(2);
 });
+
+test('cancellation when the final binary read completes cannot return a successful download', async () => {
+  const active = new AbortController();
+  const response = new Response(
+    new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          active.abort();
+          controller.close();
+        },
+      },
+      { highWaterMark: 0 },
+    ),
+  );
+  const transport = new Transport({
+    boardReference: board.shortLink,
+    getAccessToken: async () => 'synthetic',
+    fetchImpl: async () => response,
+  });
+  await expect(
+    transport.download('/scoped-test-download', 10, { signal: active.signal }),
+  ).rejects.toMatchObject({ name: 'AbortError' });
+});
+
+test.each([HttpMethod.Post, HttpMethod.Put])(
+  'cancellation during token acquisition never dispatches %s',
+  async (method) => {
+    const active = new AbortController();
+    const fetchImpl = vi.fn<typeof fetch>();
+    const transport = new Transport({
+      boardReference: board.shortLink,
+      fetchImpl,
+      getAccessToken: async () => {
+        active.abort();
+        return 'synthetic';
+      },
+    });
+    await expect(
+      transport.request(method, '/scoped-test-write', { signal: active.signal }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  },
+);
+
+test.each([HttpMethod.Post, HttpMethod.Put])(
+  'a cancelled body read after %s preserves write uncertainty without retries',
+  async (method) => {
+    const active = new AbortController();
+    const response = ok({ id: board.id });
+    vi.spyOn(response, 'json').mockImplementation(async () => {
+      active.abort();
+      throw new Error('Synthetic lost body');
+    });
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(response);
+    const transport = new Transport({
+      boardReference: board.shortLink,
+      fetchImpl,
+      getAccessToken: async () => 'synthetic',
+    });
+    await expect(
+      transport.request(method, '/scoped-test-write', { signal: active.signal }),
+    ).rejects.toMatchObject({ code: ApiErrorCode.WriteResultUnknown });
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  },
+);
+
+test.each([HttpMethod.Post, HttpMethod.Put])(
+  'an observed %s result is retained if cancellation follows dispatch',
+  async (method) => {
+    const active = new AbortController();
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () => {
+      active.abort();
+      return ok({ id: board.id });
+    });
+    const transport = new Transport({
+      boardReference: board.shortLink,
+      fetchImpl,
+      getAccessToken: async () => 'synthetic',
+    });
+    expect(
+      await transport.request(method, '/scoped-test-write', { signal: active.signal }),
+    ).toEqual({ id: board.id });
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  },
+);

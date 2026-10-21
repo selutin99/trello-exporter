@@ -26,99 +26,175 @@
           </select></label
         >
       </header>
-      <nav class="tabs" aria-label="Workflow">
-        <span class="active-tab" data-i18n="exportTab"></span
-        ><span class="future-tab" data-i18n="exportRestore"></span>
+      <nav class="tabs" role="tablist" aria-label="Workflow">
+        <button
+          id="export-tab"
+          class="active-tab"
+          role="tab"
+          aria-selected="true"
+          aria-controls="export-panel"
+          data-i18n="exportTab"
+        ></button>
+        <button
+          id="restore-tab"
+          role="tab"
+          aria-selected="false"
+          aria-controls="restore-panel"
+          data-i18n="exportRestore"
+        ></button>
       </nav>
-      <div id="demo-notice" class="notice" data-i18n="exportDemoNotice" hidden></div>
-      <div class="hero">
-        <h1 data-i18n="exportTitle"></h1>
-        <p class="subtle" data-i18n="exportIntro"></p>
-      </div>
-      <section class="board-summary" aria-labelledby="board-name">
-        <div class="board-symbol" aria-hidden="true">▥</div>
-        <div>
-          <h2 id="board-name">—</h2>
-          <p id="board-counts" class="subtle"></p>
+      <section id="export-panel" role="tabpanel" aria-labelledby="export-tab">
+        <div class="hero">
+          <h1 data-i18n="exportTitle"></h1>
+          <p class="subtle" data-i18n="exportIntro"></p>
         </div>
-        <button id="refresh" class="icon-button" data-i18n="exportRefresh" hidden></button>
+        <section class="board-summary" aria-labelledby="board-name">
+          <div class="board-symbol" aria-hidden="true">▥</div>
+          <div>
+            <h2 id="board-name">—</h2>
+            <p id="board-counts" class="subtle"></p>
+          </div>
+          <button id="refresh" class="icon-button" data-i18n="exportRefresh" hidden></button>
+        </section>
+        <div id="standalone" class="notice" hidden>
+          <p data-i18n="exportStandalone"></p>
+        </div>
+        <div id="connection" class="notice">
+          <p id="connection-status" data-i18n="exportAuthRequired"></p>
+          <button id="connect" data-i18n="exportConnect" disabled></button>
+        </div>
+        <fieldset id="formats">
+          <legend data-i18n="exportFormat"></legend>
+          <div class="format-grid">
+            <label class="format-option"
+              ><input type="radio" name="format" value="zip" checked /><span class="format-top"
+                ><span class="format-icon">ZIP</span
+                ><span class="recommendation" data-i18n="exportRecommended"></span></span
+              ><strong data-i18n="exportZipTitle"></strong
+              ><span class="subtle" data-i18n="exportZipNote"></span
+            ></label>
+            <label class="format-option"
+              ><input type="radio" name="format" value="json" /><span class="format-top"
+                ><span class="format-icon">{ }</span></span
+              ><strong data-i18n="exportJsonTitle"></strong
+              ><span class="subtle" data-i18n="exportJsonNote"></span
+            ></label>
+            <label class="format-option"
+              ><input type="radio" name="format" value="md" /><span class="format-top"
+                ><span class="format-icon">MD</span></span
+              ><strong data-i18n="exportMarkdownTitle"></strong
+              ><span class="subtle" data-i18n="exportMarkdownNote"></span></label
+            ><label class="format-option"
+              ><input type="radio" name="format" value="pdf" /><span class="format-top"
+                ><span class="format-icon">PDF</span></span
+              ><strong data-i18n="exportPdfTitle"></strong
+              ><span class="subtle" data-i18n="exportPdfNote"></span></label
+            ><label class="format-option"
+              ><input type="radio" name="format" value="xlsx" /><span class="format-top"
+                ><span class="format-icon">XLSX</span></span
+              ><strong data-i18n="exportXlsxTitle"></strong
+              ><span class="subtle" data-i18n="exportXlsxNote"></span></label
+            ><label class="format-option"
+              ><input type="radio" name="format" value="csv" /><span class="format-top"
+                ><span class="format-icon">CSV</span></span
+              ><strong data-i18n="exportCsvTitle"></strong
+              ><span class="subtle" data-i18n="exportCsvNote"></span
+            ></label>
+          </div>
+        </fieldset>
+        <section class="included" aria-labelledby="included-title">
+          <h2 id="included-title" data-i18n="exportIncluded"></h2>
+          <ul>
+            <li data-i18n="exportStructure"></li>
+            <li data-i18n="exportChecklists"></li>
+            <li data-i18n="exportComments"></li>
+            <li data-i18n="exportMetadata"></li>
+            <li id="attachment-coverage">
+              <span id="attachment-mark" aria-hidden="true">✓</span>
+              <span data-i18n="exportAttachmentLabel"></span>
+              <span id="attachment-status" class="sr-only"></span>
+            </li>
+          </ul>
+        </section>
+        <div id="operation" hidden>
+          <p id="progress-label" role="status" aria-live="polite"></p>
+          <progress id="progress" max="1"></progress
+          ><button id="cancel" class="text-button" data-i18n="exportCancel"></button>
+        </div>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+        <section id="result" class="result" aria-labelledby="result-title" hidden>
+          <div class="success-mark" aria-hidden="true">✓</div>
+          <h2 id="result-title"></h2>
+          <p id="result-note" class="subtle"></p>
+          <dl id="metrics" class="metrics"></dl>
+          <p id="file-size" class="subtle"></p>
+          <div id="warnings" class="warnings" hidden>
+            <h3 data-i18n="exportWarnings"></h3>
+            <ul id="warning-list"></ul>
+          </div>
+          <button id="save" class="primary"></button
+          ><button id="report" class="text-button" data-i18n="exportReport"></button>
+        </section>
+        <div class="export-footer">
+          <p class="privacy-note" data-i18n="exportPrivacy"></p>
+          <button id="export" class="primary" data-i18n="exportAction" disabled></button>
+        </div>
+        <p class="subtle fine-print" data-i18n="exportConsistency"></p>
+        <details class="technical">
+          <summary data-i18n="exportDetails"></summary>
+          <p data-i18n="exportFileLimit"></p>
+          <p>
+            <a
+              href="%CONNECTED_APPS_URL%"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-i18n="manageAccess"
+            ></a>
+          </p>
+        </details>
       </section>
-      <div id="standalone" class="notice" hidden>
-        <p data-i18n="exportStandalone"></p>
-        <button id="demo" data-i18n="exportDemo"></button>
-      </div>
-      <div id="connection" class="notice">
-        <p id="connection-status" data-i18n="exportAuthRequired"></p>
-        <button id="connect" data-i18n="exportConnect" disabled></button>
-      </div>
-      <fieldset id="formats">
-        <legend data-i18n="exportFormat"></legend>
-        <div class="format-grid">
-          <label class="format-option"
-            ><input type="radio" name="format" value="zip" checked /><span class="format-top"
-              ><span class="format-icon">ZIP</span
-              ><span class="recommendation" data-i18n="exportRecommended"></span></span
-            ><strong data-i18n="exportZipTitle"></strong
-            ><span class="subtle" data-i18n="exportZipNote"></span
+      <section id="restore-panel" role="tabpanel" aria-labelledby="restore-tab" hidden>
+        <div class="hero">
+          <h1 data-i18n="restoreTitle"></h1>
+          <p class="subtle" data-i18n="restoreIntro"></p>
+        </div>
+        <label class="restore-file"
+          ><span data-i18n="restoreFile"></span
+          ><input
+            id="restore-file"
+            type="file"
+            accept=".json,.zip,application/json,application/zip"
+        /></label>
+        <p id="restore-status" role="status" aria-live="polite"></p>
+        <section id="restore-preview" class="notice" hidden>
+          <h2 id="restore-source"></h2>
+          <p id="restore-counts"></p>
+          <p id="restore-workspace"></p>
+          <label class="restore-name"
+            ><span data-i18n="restoreName"></span
+            ><input id="restore-name" type="text" maxlength="256"
+          /></label>
+          <h3 data-i18n="restoreLimitations"></h3>
+          <ul id="restore-limitations"></ul>
+          <p data-i18n="restorePermission"></p>
+          <button id="restore-connect" data-i18n="restoreConnect" hidden></button>
+          <p id="restore-previous" data-i18n="restorePrevious" hidden></p>
+          <label class="restore-confirm"
+            ><input id="restore-confirm" type="checkbox" /><span data-i18n="restoreConfirm"></span
           ></label>
-          <label class="format-option"
-            ><input type="radio" name="format" value="json" /><span class="format-top"
-              ><span class="format-icon">{ }</span></span
-            ><strong data-i18n="exportJsonTitle"></strong
-            ><span class="subtle" data-i18n="exportJsonNote"></span
-          ></label>
-        </div>
-      </fieldset>
-      <section class="included" aria-labelledby="included-title">
-        <h2 id="included-title" data-i18n="exportIncluded"></h2>
-        <ul>
-          <li data-i18n="exportStructure"></li>
-          <li data-i18n="exportChecklists"></li>
-          <li data-i18n="exportComments"></li>
-          <li data-i18n="exportMetadata"></li>
-          <li id="attachment-coverage">
-            <span id="attachment-mark" aria-hidden="true">✓</span>
-            <span data-i18n="exportAttachmentLabel"></span>
-            <span id="attachment-status" class="sr-only"></span>
-          </li>
-        </ul>
+          <div class="restore-actions">
+            <button id="restore-start" class="primary" data-i18n="restoreAction" disabled></button
+            ><button id="restore-resume" data-i18n="restoreResume" hidden></button>
+          </div>
+        </section>
+        <button id="restore-cancel" data-i18n="exportCancel" hidden></button>
+        <section id="restore-result" class="notice" hidden>
+          <h2 id="restore-outcome"></h2>
+          <a id="restore-target" target="_blank" rel="noopener noreferrer" hidden></a>
+          <p data-i18n="restoreRetained"></p>
+          <button id="restore-report" data-i18n="restoreReport"></button>
+        </section>
       </section>
-      <div id="operation" hidden>
-        <p id="progress-label" role="status" aria-live="polite"></p>
-        <progress id="progress" max="1"></progress
-        ><button id="cancel" class="text-button" data-i18n="exportCancel"></button>
-      </div>
-      <p id="status" class="status" role="status" aria-live="polite"></p>
-      <section id="result" class="result" aria-labelledby="result-title" hidden>
-        <div class="success-mark" aria-hidden="true">✓</div>
-        <h2 id="result-title"></h2>
-        <p id="result-note" class="subtle"></p>
-        <dl id="metrics" class="metrics"></dl>
-        <p id="file-size" class="subtle"></p>
-        <div id="warnings" class="warnings" hidden>
-          <h3 data-i18n="exportWarnings"></h3>
-          <ul id="warning-list"></ul>
-        </div>
-        <button id="save" class="primary"></button
-        ><button id="report" class="text-button" data-i18n="exportReport"></button>
-      </section>
-      <div class="export-footer">
-        <p class="privacy-note" data-i18n="exportPrivacy"></p>
-        <button id="export" class="primary" data-i18n="exportAction" disabled></button>
-      </div>
-      <p class="subtle fine-print" data-i18n="exportConsistency"></p>
-      <details class="technical">
-        <summary data-i18n="exportDetails"></summary>
-        <p data-i18n="exportFileLimit"></p>
-        <p>
-          <a
-            href="%CONNECTED_APPS_URL%"
-            target="_blank"
-            rel="noopener noreferrer"
-            data-i18n="manageAccess"
-          ></a>
-        </p>
-      </details>
       <footer>
         <a
           id="privacy-link"

@@ -1,7 +1,7 @@
 # GitHub Pages delivery
 
 The Power-Up is hosted at `https://selutin99.github.io/trello-exporter/`.
-The root opens the synthetic export demo. Live board content is available only
+The root opens the export interface without sample content. Live board content is available only
 through the configured Power-Up inside Trello; hosting does not receive exports,
 attachments, or OAuth tokens from the app.
 
@@ -21,8 +21,11 @@ than rebuilding or checking out a potentially newer revision.
 The preparation job has read permissions for repository contents and Actions
 artifacts. The deployment job alone receives `pages: write` and `id-token: write`
 and uses the `github-pages` environment. Deployments are serialized without
-cancelling a publication already in progress. Third-party actions are official
-GitHub actions pinned to centralized SHA anchors in each workflow.
+cancelling a publication already in progress. Actions are maintained by GitHub
+or Gitleaks and referenced by readable major-version tags. The official Gitleaks
+Action scans push/PR commit ranges using a fixed scanner version. Manual CI
+dispatch scans history. Gitleaks has read-only content/PR permissions, with PR
+comments and SARIF artifact uploads disabled; it publishes no Pages content.
 
 The repository's Pages publishing source must be **GitHub Actions**, not a branch
 or a documentation directory. An ordinary push to `main` runs CI and then CD;

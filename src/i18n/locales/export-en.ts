@@ -3,7 +3,7 @@ export const exportEn = {
   exportTitle: 'Save your board',
   exportIntro: 'Save the current state of your board to a file',
   exportTab: 'Export board',
-  exportRestore: 'Restore · coming later',
+  exportRestore: 'Restore board',
   exportFormat: 'Choose a format',
   exportZipTitle: 'ZIP archive',
   exportZipNote: 'Board content + original attachment files',
@@ -17,7 +17,7 @@ export const exportEn = {
   exportMetadata: 'Labels, dates & custom fields',
   exportAttachmentLabel: 'Attachments',
   exportIncludedStatus: 'Included',
-  exportExcludedStatus: 'Not included in JSON',
+  exportExcludedStatus: 'Attachment files not included',
   exportPrivacy:
     'Processing happens on your device. The plugin reads board content without changing the data',
   exportConsistency: 'Export takes time. Avoid editing the board while exporting',
@@ -51,9 +51,6 @@ export const exportEn = {
   exportRefresh: 'Update board info',
   exportLoading: 'Loading board…',
   exportStandalone: 'Open trello-exporter from your Trello board to export its content',
-  exportDemo: 'Explore a sample board',
-  exportDemoNotice: 'Sample board · synthetic data · no Trello requests',
-  exportDemoName: 'Studio launch',
   exportBestEffort: 'Best-effort capture',
   exportFileLimit:
     'ZIP attachment budget: 250 MiB. Unavailable or oversized files are listed in warnings',

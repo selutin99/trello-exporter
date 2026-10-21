@@ -318,7 +318,10 @@ export class BoardReader {
       }
       result.push(...page);
       if (page.length < 1000) return result;
-      before = page.map((item) => item.id).sort((a, b) => a.localeCompare(b))[0]!;
+      before = page.reduce(
+        (oldest, item) => (!oldest || item.id.localeCompare(oldest) < 0 ? item.id : oldest),
+        '',
+      );
     }
   }
 }

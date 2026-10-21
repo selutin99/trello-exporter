@@ -1,7 +1,8 @@
 # Snapshot and ZIP format
 
-Status: draft contract 0.1.0, October 19, 2026. JSON/ZIP export is implemented;
-JSON Schema and restoration are pending. Fields may change together with the example before release.
+Status: contract 0.1.0, October 21, 2026. JSON/ZIP export and import validation
+are implemented with Zod, together with new-board restoration. Standalone JSON
+Schema publication and live restoration acceptance remain pending.
 
 ## 1. General rules
 
@@ -91,7 +92,7 @@ Standalone JSON always has `attachmentFiles` excluded with count zero: it embeds
 no bytes and references no local files. In ZIP, file coverage applies only to
 selected Trello uploads; external links are metadata, not failed downloads.
 
-Each issue has `code`, `severity` (`warning` or `error`), `entityType`, `entityId`,
+Each issue has `code`, `severity` (`warning`), `entityType`, `entityId`,
 and a readable `message`. Section/snapshot failures may use `entityId: null`.
 Messages must not include tokens or raw secret-bearing responses.
 
@@ -111,15 +112,16 @@ Messages must not include tokens or raw secret-bearing responses.
 | `comments`          | `id`, `cardId`, `authorId`, `authorDisplayName`, `createdAt`, `text`, `order`                                             |
 | `attachments`       | `id`, `cardId`, `name`, `kind`, `url`, `mimeType`, `size`, `file`                                                         |
 
-`cover` may be `null`; an object retains available settings and `attachmentId` as
+`cover` may be `null`; an object retains available settings and `idAttachment` as
 source metadata. Applying covers during restore is deferred.
 
 Field `options` is an array of `{id, text, color, order}`, empty for fields without
-choices. For `text`, `number`, `date`, and `checkbox`, `value` is respectively a
-string, decimal string, UTC date, or boolean. A `list` field uses `optionId` to
-reference its definition's option. Absent values do not create records. Unknown
-field types are not silently reinterpreted: retain available metadata, mark the
-section partial, and create an issue.
+choices. The API-shaped `value` object contains exactly one key: `{text: string}`,
+`{number: decimalString}`, `{date: isoDate}`, or `{checked: "true" | "false"}`
+for `text`, `number`, `date`, or `checkbox`, respectively. A `list` field uses `optionId` to
+reference its definition's option. A record without `value` and `optionId` is
+accepted as an unset field for compatibility and does not trigger a write. Unknown
+field types are rejected by import rather than reinterpreted.
 
 `attachments.kind` is `trello-upload` or `external-link`. `url` is a safe original
 HTTP(S) URL, or `null` if retaining it would expose secrets. Unknown `mimeType`
@@ -144,17 +146,22 @@ limitations. Arbitrary Trello URLs in descriptions are not rewritten in v0.1 and
 may still lead to the source board; the preview must explain that.
 
 A separate `restore-report.json` records operation/snapshot IDs, target board,
-execution period, status (`complete`, `partial`, `failed`, `cancelled`), created
+execution period, status (`complete`, `partial`, `failed`, `cancelled`, `unknown`), created
 and skipped counts, ID mappings, limitations, and failures. It never changes the
-source archive. A complete restore means no omissions within the applicable
+source archive. The optional `commentLocale` restoration-journal field pins the
+summary language across continuation so completed comment chunk keys keep the same
+text boundaries; it does not change the snapshot or ZIP format. A complete restore means no omissions within the applicable
 selected plan, not identity of every Trello property. Metadata-only fields must
 still be listed separately even when status is `complete`.
 
 ## 6. Example and further formalization
 
 The [minimal snapshot](minimal.snapshot.json) contains a synthetic board, one
-list, and one card. It illustrates the draft contract; restoration is not implemented.
+list, and one card. It illustrates the contract. Synthetic fixtures in `test/helpers/` also supply files, comments,
+and custom fields for offline export/import tests.
 
-Implementation must add JSON Schemas for snapshots, manifests, and reports, a
-complete example with files and custom fields, and integrity, version-compatibility,
-and restoration checks against the [product criteria](SPECIFICATION.md).
+Runtime Zod validation checks snapshots, manifests, and same-browser journals.
+Offline tests cover integrity, unsupported versions, references, limits, and
+restoration writes through a synthetic HTTP boundary. See
+[restoration and recovery](RESTORATION.md). Publishing standalone JSON Schemas and
+passing the live [product criteria](SPECIFICATION.md) remain release work.

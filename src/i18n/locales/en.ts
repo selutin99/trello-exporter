@@ -1,10 +1,14 @@
 import { exportEn } from './export-en';
 import { privacyEn } from './privacy-en';
+import { formatsEn } from './formats-en';
+import { restoreEn } from './restore-en';
 
 /** English UI messages; keys define the translation contract */
 export const en = {
   ...exportEn,
   ...privacyEn,
+  ...formatsEn,
+  ...restoreEn,
   title: 'trello-exporter',
   badge: 'Diagnostics',
   sampleText: 'Local file check / Test ✓',

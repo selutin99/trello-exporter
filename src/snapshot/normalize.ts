@@ -1,3 +1,4 @@
+import { groupRecords } from './collections';
 import { serviceUrls } from '../config/services';
 import type { SourceAttachment, SourceCard, SourceChecklist, SourceComment } from '../api/schemas';
 import { AttachmentKind, IssueCode } from './codes';
@@ -64,8 +65,7 @@ export function normalizeAttachment(source: SourceAttachment, cardId: string): S
  * @returns Portable card content
  */
 export function normalizeCards(cards: SourceCard[]): Snapshot['cards'] {
-  const groups = new Map<string, SourceCard[]>();
-  for (const card of cards) groups.set(card.idList, [...(groups.get(card.idList) ?? []), card]);
+  const groups = groupRecords(cards, (card) => card.idList);
   return [...groups.values()].flatMap((group) =>
     ordered(group).map((card) => ({
       id: card.id,

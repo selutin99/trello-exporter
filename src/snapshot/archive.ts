@@ -1,3 +1,5 @@
+import { jsonBytes, sha256 } from './encoding';
+export { jsonBytes, sha256 } from './encoding';
 import { Zip, ZipPassThrough } from 'fflate';
 import type { BoardReader } from '../api/reader';
 import type { CapturedBoard } from './capture';
@@ -11,22 +13,12 @@ import type { CaptureOptions, SnapshotFile } from './types';
 export const MAXIMUM_ARCHIVE_BYTES = 250 * 1024 * 1024;
 
 /**
- * Computes the digest of original, uncompressed file bytes
- * @param bytes - Bytes to hash
- * @returns Lowercase SHA-256 hexadecimal digest
- */
-export async function sha256(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
-  const hash = await crypto.subtle.digest('SHA-256', bytes);
-  return [...new Uint8Array(hash)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
-}
-
-/**
  * Packages a snapshot and available uploads with an integrity manifest
  * @param capture - Snapshot and private source metadata
  * @param reader - Scoped attachment download boundary
  * @param options - Cancellation and progress observer
  * @returns A ZIP blob; missing uploads are recorded as warnings inside the snapshot
- * @throws ScopeError for foreign ownership; the signal reason on cancellation
+ * @throws ApiError for missing upload metadata; ScopeError for foreign ownership; the signal reason on cancellation
  */
 export async function buildArchive(
   capture: CapturedBoard,
@@ -49,7 +41,8 @@ export async function buildArchive(
     for (const [index, attachment] of uploads.entries()) {
       options.signal?.throwIfAborted();
       options.onProgress?.({ stage: ExportStage.Files, current: index, total: uploads.length });
-      const source = capture.uploads.get(attachment.id)!;
+      const source = capture.uploads.get(attachment.id);
+      if (!source) throw new ApiError(ApiErrorCode.InvalidResponse);
       try {
         const bytes = await reader.file(attachment.cardId, source, MAXIMUM_ARCHIVE_BYTES - used, {
           signal: options.signal,
@@ -108,13 +101,4 @@ function addFile(zip: Zip, path: string, bytes: Uint8Array): void {
   const file = new ZipPassThrough(path);
   zip.add(file);
   file.push(bytes, true);
-}
-
-/**
- * Encodes portable JSON as UTF-8 without embedding file bytes
- * @param value - Serializable snapshot or manifest
- * @returns UTF-8 JSON bytes
- */
-export function jsonBytes(value: unknown): Uint8Array<ArrayBuffer> {
-  return new TextEncoder().encode(JSON.stringify(value, null, 2));
 }

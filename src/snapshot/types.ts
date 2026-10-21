@@ -1,6 +1,7 @@
 import type {
   AttachmentKind,
   CaptureOutcome,
+  CustomFieldType,
   CoverageStatus,
   ExportStage,
   IssueCode,
@@ -71,20 +72,22 @@ export interface Snapshot {
   customFields: {
     id: string;
     name: string;
-    type: string;
+    type: CustomFieldType;
     order: number;
     options: { id: string; text: string; color: string; order: number }[];
   }[];
   customFieldValues: {
     cardId: string;
     fieldId: string;
-    value?: {
-      text?: string | undefined;
-      number?: string | undefined;
-      date?: string | undefined;
-      checked?: string | undefined;
-    };
-    optionId?: string;
+    value?:
+      | {
+          text?: string | undefined;
+          number?: string | undefined;
+          date?: string | undefined;
+          checked?: string | undefined;
+        }
+      | undefined;
+    optionId?: string | undefined;
   }[];
   checklists: { id: string; cardId: string; name: string; order: number }[];
   checklistItems: {
@@ -93,8 +96,8 @@ export interface Snapshot {
     name: string;
     order: number;
     checked: boolean;
-    due?: string | null;
-    memberId?: string | null;
+    due?: string | null | undefined;
+    memberId?: string | null | undefined;
   }[];
   comments: {
     id: string;

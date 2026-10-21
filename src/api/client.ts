@@ -67,7 +67,8 @@ export class TestBoardApi {
       },
     );
     if (!Array.isArray(lists)) throw new ApiError(ApiErrorCode.InvalidResponse);
-    const projected = (lists as unknown[]).map(projectList);
+    const values: unknown[] = lists;
+    const projected = values.map(projectList);
     this.#scope.rememberLists(projected);
     return projected.filter((list) => !list.closed);
   }

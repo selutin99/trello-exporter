@@ -5,10 +5,10 @@ import { pageReady } from '../../trello/sdk';
 import type { PowerUpFrame } from '../../trello/sdk';
 import { OAuthScope } from '../../trello/scopes';
 import { ExportFormat } from '../../snapshot/codes';
-import { createDemoCapture, demoFileReader } from '../../demo/preview';
 import { downloadBlob, downloadJson } from '../download';
 import { ExportSession } from './session';
 import { ExportView } from './view';
+import { RestoreUI } from '../restore/controller';
 
 const view = new ExportView(document);
 let locale = chooseLocale(navigator.language);
@@ -21,14 +21,17 @@ try {
 if (preferredLocale) locale = chooseLocale(preferredLocale);
 let frame: PowerUpFrame | null = null;
 let reader: BoardReader | null = null;
+let restore: RestoreUI | null = null;
 const session = new ExportSession(render);
 window.addEventListener('pagehide', () => session.cancel(), { once: true });
 function render(): void {
-  view.render(locale, session.model, !!frame, session.busy);
+  view.render(locale, session.model, !!frame, session.busy || !!restore?.busy);
+  restore?.render();
 }
 
-view.element('language', HTMLSelectElement).addEventListener('change', (event) => {
-  locale = chooseLocale((event.target as HTMLSelectElement).value);
+const language = view.element('language', HTMLSelectElement);
+language.addEventListener('change', () => {
+  locale = chooseLocale(language.value);
   preferredLocale = locale;
   try {
     localStorage.setItem('exporter-locale', locale);
@@ -38,17 +41,13 @@ view.element('language', HTMLSelectElement).addEventListener('change', (event) =
   render();
 });
 for (const input of document.querySelectorAll<HTMLInputElement>('input[name="format"]')) {
-  input.addEventListener('change', () =>
-    session.selectFormat(
-      input.value === String(ExportFormat.Json) ? ExportFormat.Json : ExportFormat.Zip,
-    ),
-  );
+  input.addEventListener('change', () => {
+    const format = Object.values(ExportFormat).find((format) => String(format) === input.value);
+    if (format) session.selectFormat(format);
+  });
 }
-view
-  .element('demo', HTMLButtonElement)
-  .addEventListener('click', () => session.useDemo(createDemoCapture, demoFileReader));
 view.element('export', HTMLButtonElement).addEventListener('click', () => {
-  void session.prepare(reader, frame?.getContext().board ?? '');
+  void session.prepare(reader, frame?.getContext().board ?? '', locale);
 });
 view.element('cancel', HTMLButtonElement).addEventListener('click', () => session.cancel());
 view.element('save', HTMLButtonElement).addEventListener('click', () => {
@@ -93,9 +92,13 @@ async function connect(): Promise<void> {
   }
 }
 
-if (window.parent === window && new URL(window.location.href).searchParams.get('demo') === '1') {
-  session.useDemo(createDemoCapture, demoFileReader);
-}
+restore = new RestoreUI({
+  document,
+  getFrame: () => frame,
+  getLocale: () => locale,
+  exportBusy: () => session.busy,
+  changed: render,
+});
 render();
 await pageReady(window);
 if (window.TrelloPowerUp && window.parent !== window) {

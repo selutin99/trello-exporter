@@ -1,0 +1,108 @@
+import { z } from 'zod';
+import { Locale } from '../i18n/types';
+import {
+  RestoreError,
+  RestoreErrorCode,
+  RestoreResource,
+  RestoreStatus,
+  RestoreWarning,
+} from './codes';
+import type { JournalStore, RestoreContext, RestoreJournal, RestoreTarget } from './types';
+
+const key = 'trello-exporter-restore-journal';
+const journalSchema = z.object({
+  format: z.literal('trello-exporter.restore-report'),
+  formatVersion: z.literal('0.1.0'),
+  operationId: z.uuid(),
+  checksum: z.string().regex(/^[a-f0-9]{64}$/),
+  snapshotId: z.uuid(),
+  sourceContextId: z.string().regex(/^[a-f0-9]{24}$/),
+  workspaceId: z.string().regex(/^[a-f0-9]{24}$/),
+  target: z
+    .object({
+      id: z.string().regex(/^[a-f0-9]{24}$/),
+      name: z.string(),
+      workspaceId: z.string().regex(/^[a-f0-9]{24}$/),
+      url: z.string(),
+    })
+    .nullable(),
+  startedAt: z.string(),
+  updatedAt: z.string(),
+  status: z.enum(RestoreStatus),
+  pending: z.string().nullable(),
+  completed: z.record(z.string(), z.string()),
+  skipped: z.array(z.string()),
+  warnings: z.array(z.enum(RestoreWarning)),
+  error: z.string().nullable(),
+  commentLocale: z.enum(Locale).optional(),
+});
+
+/** Same-browser operation storage; downloaded reports cannot authorize arbitrary targets */
+export class LocalJournalStore implements JournalStore {
+  /**
+   * Binds the optional browser storage boundary
+   * @param storage - Local browser storage, never imported snapshot data
+   */
+  constructor(private readonly storage: Pick<Storage, 'getItem' | 'setItem'>) {}
+
+  /**
+   * Reads this browser's last operation with structural validation
+   * @returns A valid local journal or null when none exists
+   * @throws RestoreError for unavailable or corrupt storage
+   */
+  read(): RestoreJournal | null {
+    try {
+      const text = this.storage.getItem(key);
+      if (!text) return null;
+      const value: unknown = JSON.parse(text);
+      const parsed = journalSchema.safeParse(value);
+      if (!parsed.success) throw new Error();
+      return parsed.data;
+    } catch {
+      throw new RestoreError(RestoreErrorCode.JournalUnavailable);
+    }
+  }
+
+  /**
+   * Persists an operation checkpoint before any creating request
+   * @param journal - Token-free operation state
+   * @throws RestoreError if durable storage is unavailable
+   */
+  save(journal: RestoreJournal): void {
+    try {
+      this.storage.setItem(key, JSON.stringify(journal));
+    } catch {
+      throw new RestoreError(RestoreErrorCode.JournalUnavailable);
+    }
+  }
+}
+
+/**
+ * Checks whether this exact input and live context can safely continue a local operation
+ * @param journal - Last structurally validated local operation
+ * @param checksum - Exact selected file checksum
+ * @param context - Current verified source board and destination Workspace
+ * @returns Whether the journal has a target and no uncertain or finished steps
+ */
+export function canResumeJournal(
+  journal: RestoreJournal | null,
+  checksum: string,
+  context: RestoreContext,
+): journal is RestoreJournal & { target: RestoreTarget } {
+  return (
+    journal !== null &&
+    journal.target !== null &&
+    journal.checksum === checksum &&
+    journal.sourceContextId === context.boardId &&
+    journal.workspaceId === context.workspaceId &&
+    journal.pending === null &&
+    (journal.commentLocale !== undefined || !hasCommentSteps(journal)) &&
+    [RestoreStatus.Failed, RestoreStatus.Cancelled, RestoreStatus.Running].includes(journal.status)
+  );
+}
+
+function hasCommentSteps(journal: RestoreJournal): boolean {
+  return [...Object.keys(journal.completed), ...journal.skipped].some((key) =>
+    key.startsWith(`${RestoreResource.Comment}/`),
+  );
+}

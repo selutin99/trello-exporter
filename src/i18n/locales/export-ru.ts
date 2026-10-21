@@ -5,7 +5,7 @@ export const exportRu = {
   exportTitle: 'Сохраните свою доску',
   exportIntro: 'Сохраните текущее состояние доски в файл',
   exportTab: 'Экспорт доски',
-  exportRestore: 'Восстановление · позже',
+  exportRestore: 'Восстановление доски',
   exportFormat: 'Выберите формат',
   exportZipTitle: 'ZIP-архив',
   exportZipNote: 'Содержимое доски и оригиналы файлов вложений',
@@ -19,7 +19,7 @@ export const exportRu = {
   exportMetadata: 'Метки, сроки и пользовательские поля',
   exportAttachmentLabel: 'Вложения',
   exportIncludedStatus: 'Сохраняются',
-  exportExcludedStatus: 'Не сохраняются в JSON',
+  exportExcludedStatus: 'Файлы вложений не сохраняются',
   exportPrivacy:
     'Обработка происходит на Вашем устройстве. Плагин читает содержимое доски, сохраняя данные без изменений',
   exportConsistency:
@@ -53,9 +53,6 @@ export const exportRu = {
   exportRefresh: 'Обновить информацию',
   exportLoading: 'Загружаем доску…',
   exportStandalone: 'Откройте trello-exporter с вашей доски Trello, чтобы выгрузить ее содержимое',
-  exportDemo: 'Посмотреть на примере',
-  exportDemoNotice: 'Пример доски · синтетические данные · без обращений к Trello',
-  exportDemoName: 'Studio launch',
   exportBestEffort: 'Снимок за интервал',
   exportFileLimit:
     'Лимит файлов в ZIP: 250 МиБ. Недоступные и слишком большие файлы попадут в предупреждения',

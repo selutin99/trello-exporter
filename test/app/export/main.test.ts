@@ -16,13 +16,23 @@ afterEach(() => {
 });
 const start = () => import('../../../src/app/export/main');
 
-test('a standalone demo link starts with synthetic content and never initializes the SDK', async () => {
+test('standalone links cannot activate sample content or initialize the SDK', async () => {
   loadPage('export', 'demo=1');
   const { sdk } = installSdk();
+  const fetcher = vi.fn<typeof fetch>();
+  vi.stubGlobal('fetch', fetcher);
   await start();
-  expect(document.getElementById('board-name')?.textContent).toBe('Studio launch');
-  expect(document.getElementById('demo-notice')?.hidden).toBe(false);
+  expect(document.getElementById('board-name')?.textContent).toBe('—');
+  expect(document.getElementById('standalone')?.hidden).toBe(false);
+  expect(document.getElementById('demo')).toBeNull();
+  expect(document.getElementById('demo-notice')).toBeNull();
+  expect(button('export').disabled).toBe(true);
+  button('connect').click();
+  button('refresh').click();
+  button('save').click();
+  button('report').click();
   expect(sdk.iframe).not.toHaveBeenCalled();
+  expect(fetcher).not.toHaveBeenCalled();
 });
 const change = (selector: string, value: string) => {
   const input = document.querySelector<HTMLInputElement | HTMLSelectElement>(selector)!;
@@ -43,34 +53,27 @@ function live(responses = fixtureResponses) {
   return { ...sdk, fetcher };
 }
 
-test('standalone preview creates downloadable JSON and ZIP without calling Trello', async () => {
-  const fetcher = vi.fn();
-  vi.stubGlobal('fetch', fetcher);
-  button('save').click();
-  button('report').click();
-  button('connect').click();
-  button('refresh').click();
+test('an embedded session downloads JSON and ZIP and preserves language preferences', async () => {
+  const { fetcher } = live();
   await start();
-  expect(button('export').disabled).toBe(true);
-  button('demo').click();
+  await vi.waitFor(() => expect(button('export').disabled).toBe(false));
   change('input[value="json"]', 'json');
   button('export').click();
   await vi.waitFor(() => expect(document.getElementById('result')?.hidden).toBe(false));
   button('save').click();
   button('report').click();
-  expect(downloads.downloadBlob.mock.calls[0]?.[1]).toMatch(/\.json$/);
+  expect(downloads.downloadBlob.mock.calls.at(-1)?.[1]).toMatch(/\.json$/);
   expect(downloads.downloadJson).toHaveBeenCalled();
   change('input[value="zip"]', 'zip');
   button('export').click();
   await vi.waitFor(() => expect(button('save').textContent).toContain('ZIP'));
-  expect(button('save').textContent).toContain('ZIP');
   button('save').click();
   expect(downloads.downloadBlob.mock.calls.at(-1)?.[0]).toBeInstanceOf(Blob);
   change('#language', 'en');
   expect(document.documentElement.lang).toBe('en');
   expect(document.body.textContent).toContain('Save your board');
   expect(localStorage.getItem('exporter-locale')).toBe('en');
-  expect(fetcher).not.toHaveBeenCalled();
+  expect(fetcher.mock.calls.every((call) => (call[1]?.method ?? 'GET') === 'GET')).toBe(true);
 });
 
 test('embedded workflow reads only the selected board, packages files, reconnects and refreshes', async () => {
@@ -127,8 +130,8 @@ test('partial exports list warnings without interpreting source names as HTML', 
   expect(document.getElementById('result-title')?.textContent).toContain('предупреждениями');
 });
 
-test('stored preferences and unavailable storage do not prevent standalone rendering', async () => {
-  localStorage.setItem('exporter-locale', 'en');
+test('unavailable preference storage does not prevent language changes or cancellation', async () => {
+  live();
   vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
     throw new Error('blocked');
   });
@@ -136,9 +139,9 @@ test('stored preferences and unavailable storage do not prevent standalone rende
     throw new Error('blocked');
   });
   await start();
+  await vi.waitFor(() => expect(button('export').disabled).toBe(false));
   change('#language', 'ru');
   expect(document.documentElement.lang).toBe('ru');
-  button('demo').click();
   button('export').click();
   button('cancel').click();
   await vi.waitFor(() =>

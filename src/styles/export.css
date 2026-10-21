@@ -99,13 +99,41 @@ a {
   gap: 28px;
   font-size: 13px;
 }
-.tabs span {
+.tabs button {
   padding: 9px 0 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
-.active-tab {
+.tabs .active-tab {
   border-bottom: 2px solid var(--accent);
   color: var(--accent);
   font-weight: 600;
+}
+.restore-file,
+.restore-name {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 18px 0;
+}
+.restore-name input {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--background);
+  color: inherit;
+  padding: 10px;
+}
+.restore-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 20px 0;
+}
+.restore-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 .future-tab {
   color: var(--subtle);

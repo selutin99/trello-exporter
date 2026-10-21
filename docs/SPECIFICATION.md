@@ -1,7 +1,8 @@
 # trello-exporter: product specification
 
-Status: JSON/ZIP export implementation with a synthetic local demo. Live content
-export validation and restoration remain pending. Revision 0.4, October 19, 2026.
+Status: JSON/ZIP export and new-board restoration are implemented, with Markdown,
+PDF, XLSX, and CSV exports. Live client and workload acceptance
+remain pending. Revision 0.6, October 21, 2026.
 Project license: MIT.
 
 ## 1. Problem
@@ -52,8 +53,9 @@ granted permissions. Tokens must never enter exports, reports, public logs, or G
 Board reads and restoration use the Trello REST API; the interface uses the
 official Power-Up SDK. The prototype uses a public OAuth 2.0 client and the
 standard SDK flow. Power-Ups require board read/write scopes across the authorized
-Workspace; do not promise permission limited to one board. The current interface
-performs no writes. See [the prototype](PROTOTYPE.md).
+Workspace; do not promise permission limited to one board. Export performs only reads. Restore performs writes only after review and
+confirmation, creating a new private board in the configured board’s Workspace.
+See [restoration](RESTORATION.md) and [historical diagnostics](PROTOTYPE.md).
 
 Live checks previously confirmed API metadata reads in Chrome and Trello Desktop
 on macOS. The tested initial path was OAuth on the same board in Chrome, then
@@ -111,7 +113,7 @@ what closure does; background continuation after closure is not promised.
 
 ## 4. Export
 
-1. Select a board, JSON or ZIP, and included content.
+1. Open the configured board and select JSON, ZIP, Markdown, PDF, XLSX, or CSV.
 2. Include only active lists and active cards in those lists, comments, and
    attachment metadata; ZIP also includes available attachment bytes. Archived
    objects and their nested content are excluded with no opt-in setting.
@@ -142,38 +144,41 @@ board cannot cause an endless export.
 
 ## 5. Data and restoration fidelity in v0.1
 
-These are target requirements. Verify API support for every field. Unsupported
-properties remain source metadata with explicit report limitations.
+The implementation follows the fidelity boundaries below. API support, permissions,
+and client behavior still need live acceptance checks. Unsupported properties remain
+source metadata with explicit report limitations.
 
-| Entity               | Preserve                                                                           | Restore                                                                             |
-| -------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Board                | Name, description, source IDs/URL, archive state                                   | New private board with name/description; source archive state remains metadata      |
-| Lists                | Names and relative order of active lists                                           | Equivalent relative order as active lists                                           |
-| Cards                | Name, Markdown description, list, order, start/due, dueComplete; active cards only | Content, dates, relative order; active cards                                        |
-| Labels               | Names, colors, card assignments                                                    | New labels and assignments; never merge solely by name                              |
-| Checklists           | Names, order, items, completion                                                    | Structure and completion; advanced assignees/dates only after API validation        |
-| Custom fields        | Definitions, types, options, values                                                | Supported types and values when available in the target Workspace                   |
-| Members              | Source IDs, usernames, names, assignments                                          | Assignments only after explicit mapping to available target-board members           |
-| Trello attachments   | Name, type, size, source link; available bytes in ZIP                              | Upload saved files; warn when standalone JSON can only recreate links               |
-| External attachments | Name and safe URL                                                                  | Links, without guaranteeing external availability                                   |
-| Comments             | Text, order, original author/time                                                  | Optional textual summary in one new comment per card, naming original authors/dates |
-| Covers               | Available settings and attachment relationship                                     | Metadata only in v0.1; applying covers is deferred                                  |
+| Entity               | Preserve                                                                           | Restore                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Board                | Name, description, source IDs/URL, archive state                                   | New private board with name/description; source archive state remains metadata       |
+| Lists                | Names and relative order of active lists                                           | Equivalent relative order as active lists                                            |
+| Cards                | Name, Markdown description, list, order, start/due, dueComplete; active cards only | Content, dates, relative order; active cards                                         |
+| Labels               | Names, colors, card assignments                                                    | New labels and assignments; never merge solely by name                               |
+| Checklists           | Names, order, items, completion                                                    | Structure and completion; advanced assignees/dates only after API validation         |
+| Custom fields        | Definitions, types, options, values                                                | Supported types and values when available in the target Workspace                    |
+| Members              | Source IDs, usernames, names, assignments                                          | Source metadata only; no automatic invites or assignments                            |
+| Trello attachments   | Name, type, size, source link; available bytes in ZIP                              | Upload saved files; warn when standalone JSON can only recreate links                |
+| External attachments | Name and safe URL                                                                  | Links, without guaranteeing external availability                                    |
+| Comments             | Text, order, original author/time                                                  | Attributed text summaries posted by restoring user; long summaries split into chunks |
+| Covers               | Available settings and attachment relationship                                     | Metadata only in v0.1; applying covers is deferred                                   |
 
 New objects receive new Trello IDs/URLs. Creation times, new comment authorship,
 and historical activity are not impersonated. Historical information in a
 comment summary is explicitly identified as text from the snapshot.
 
 Do not automatically invite people or copy access rights. Create a private target
-board; if Workspace policy prevents this, stop before board creation and explain.
+board and verify its returned privacy and Workspace before adding content. If
+Workspace policy rejects private creation, stop and report the API failure.
 
 ## 6. Restoration
 
 1. Open a project-format JSON or ZIP file.
 2. Before any Trello mutation, validate format/version, entity relationships,
    and ZIP file inventory and checksums.
-3. Select the target Workspace and a name for the new board.
-4. Preview active object counts, missing files, limitations, member
-   mapping, and comment handling.
+3. Review the configured board’s Workspace and choose a name for the new board.
+   The implementation does not enumerate or offer other Workspaces.
+4. Preview active object counts, missing files, member-assignment limitations,
+   and comment handling.
 5. After confirmation, create the board, labels/field definitions, lists, cards,
    checklists, field values, and attachments. Map old IDs to new IDs. Lists and cards remain active.
 6. Reread available created objects, verify results, and return a board link and
@@ -199,15 +204,17 @@ or lossy restoration must not be labeled complete.
 
 ## 7. Additional formats
 
-| Format   | Planned content                                                                                                                                                                              |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CSV      | One row per card: list, name, description, dates, labels, members; related collections serialized into cells using documented separators                                                     |
-| XLSX     | Boards, Lists, Cards, Labels, Members, CardMembers, CardLabels, Checklists, ChecklistItems, CustomFields, CustomFieldValues, Comments, Attachments, ExportReport sheets linked by source IDs |
-| Markdown | Board index and per-card files with checklists and relative attachment links, distributed as ZIP                                                                                             |
-| HTML     | One local board/list/card viewer with search; attachment files beside it in ZIP, no source-board requests or external CDNs                                                                   |
-| PDF      | Document grouped by lists with descriptions, checklists, attachment links, and completeness summary                                                                                          |
+| Format   | Content                                                                                                                                                                                                     |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CSV      | One row per card: list, name, description, dates, labels, members; related collections serialized as JSON in quoted cells                                                                                   |
+| XLSX     | Overview, Lists, Cards, Labels, Members, CardMembers, CardLabels, Checklists, ChecklistItems, CustomFields, CustomFieldOptions, CustomFieldValues, Comments, Attachments, ExportReport; optional TextChunks |
+| Markdown | Single UTF-8 Markdown file grouped by lists/cards, with checklists, comments, and attachment metadata/links; no file bytes                                                                                  |
+| HTML     | Planned: local board/list/card viewer; not implemented                                                                                                                                                      |
+| PDF      | Document grouped by lists with descriptions, checklists, attachment links, and completeness summary                                                                                                         |
 
-Every format identifies the capture interval and omissions. PDF/HTML preserve
+Document exports identify the capture interval and omissions; CSV is a flat card
+table and does not represent empty lists or board-level metadata. See
+[format details](FORMATS.md). PDF/HTML preserve
 content without reproducing Trello's exact appearance. Store external XLSX
 strings as text and protect CSV cells against formula interpretation. JSON
 retains original text without spreadsheet-specific transformation.
@@ -273,25 +280,24 @@ must not be advertised as supporting every Trello JSON export.
 
 | Stage                 | Outcome                                                                                                                                                                                                    |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current               | Specification, archive contract, JSON/ZIP export implementation, local synthetic demo, compatibility diagnostics, tests, and open repository                                                               |
+| Current               | JSON/ZIP export and restoration, Markdown/PDF/XLSX/CSV export, offline tests, compatibility diagnostics, and open repository                                                                               |
 | API/client validation | Authorization and file selection/saving in macOS Desktop and Chrome first; then pagination, long checklists, comments, 200 MiB attachments, custom fields, archives, and permissions on a disposable board |
 | v0.1                  | macOS Desktop/Chrome Power-Up, RU/EN, JSON/ZIP, preview, new-board restoration, reports, and resumable journal                                                                                             |
-| v0.2                  | CSV/XLSX and a built-in Trello JSON adapter with an explicit loss matrix                                                                                                                                   |
-| v0.3                  | Markdown/HTML local viewing, followed by PDF                                                                                                                                                               |
+| v0.2                  | Built-in Trello JSON adapter with an explicit loss matrix                                                                                                                                                  |
+| v0.3                  | HTML local viewing and further document layout improvements                                                                                                                                                |
 
-Before implementation, decide supported custom-field types, exact resource
-limits, journal/token storage, large-archive processing, and Power-Up hosting.
-Record decisions from actual validation rather than describing intended support
-as already implemented.
+Current implementation choices, resource limits, journal/token storage, and
+format boundaries are documented in [RESTORATION.md](RESTORATION.md) and
+[FORMATS.md](FORMATS.md). Record live evidence before claiming client support.
 
 ## Implementation update — 2026-10-18
 
 A JSON/ZIP capture pipeline and bilingual export UI are implemented with an
 explicitly synthetic local demo. The current scope and validation limits are
-recorded in [EXPORT_DEMO.md](EXPORT_DEMO.md). Live test-board seeding and export,
+recorded in [EXPORT.md](EXPORT.md). Live test-board seeding and export,
 new Desktop export checks, and the full acceptance workload remain pending.
-Restoration and additional formats are not implemented. This October 18
-iteration used a local-only demo by user choice.
+At that point restoration and additional formats were not implemented. That
+October 18 iteration used a local-only demo by user choice.
 
 ## Delivery update — 2026-10-19
 
@@ -299,3 +305,11 @@ GitHub Pages hosting is explicitly authorized for showing the Power-Up inside th
 designated test board. CI retains quality and secret checks; a separate CD workflow
 publishes only its checked site artifact after successful push CI on main.
 Coverage is never part of the site. See [DEPLOYMENT.md](DEPLOYMENT.md).
+
+## Interface update — 2026-10-21
+
+The bundled sample-board mode was removed. The production interface exports only
+through the configured Power-Up inside Trello; a standalone page still supports
+local import validation. Synthetic captures and file bytes remain under
+`test/helpers/` for automated regression tests. This change does not establish
+live export/restore, Desktop, or full-workload acceptance.

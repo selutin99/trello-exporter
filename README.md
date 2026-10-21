@@ -3,17 +3,17 @@
 An open-source project for saving a Trello board's current state and rebuilding
 that board from a portable snapshot.
 
-**Status: JSON/ZIP export implementation with a working synthetic local demo.
-Live export validation and snapshot restoration are still pending.**
+**Status: JSON/ZIP export and new-board restoration are implemented, alongside
+Markdown, PDF, XLSX, and CSV export. Live end-to-end validation remains pending.**
 
 The primary formats are JSON and ZIP. ZIP bundles the snapshot with downloaded
 attachments so that recovery does not depend on the original files remaining
-available in Trello. CSV, XLSX, Markdown, HTML, and PDF are planned as additional
-formats for analysis, reading, and sharing.
+available in Trello. CSV, XLSX, Markdown, and PDF provide analysis, reading, and
+sharing views. HTML remains planned. Only project-format JSON/ZIP supports import.
 
-## Planned workflow
+## Workflow
 
-1. Select a board and the content to include.
+1. Open the Power-Up on its configured board; only active lists/cards are included.
 2. Export a JSON snapshot or a ZIP archive with attachment files.
 3. Inspect the export and its completeness report.
 4. Load the snapshot, preview the restore plan, and rebuild it as a new board.
@@ -34,10 +34,10 @@ backups, and synchronization are outside the initial release.
 - Processing on the user's device is preferred. Desktop support does not itself
   require uploading board data to a project-operated server.
 
-These are requirements awaiting implementation and validation. Windows Desktop
+The acceptance workload and complete live client flow still need validation. Windows Desktop
 and other browsers require separate compatibility checks before support is claimed.
 
-## Run the export demo
+## Development and Trello validation
 
 Use Node.js 24, or a compatible runtime (20.19+ / 22.13+). The application is
 written in strict TypeScript with Vite. It is a single npm project.
@@ -48,23 +48,29 @@ npm run check
 npm run dev
 ```
 
-Open `http://127.0.0.1:4173/trello-exporter/pages/export.html` and choose
-**Explore a sample board**. Create a JSON snapshot or a ZIP with original synthetic
-attachment files, then download it and its coverage report. The sample has six
-cards, nineteen checklist items, three comments, and three files. It does not
-access Trello. See [export implementation and validation boundaries](docs/EXPORT_DEMO.md).
+Open `http://127.0.0.1:4173/trello-exporter/pages/export.html` to inspect the
+interface locally. Export requires the registered Power-Up opened from its
+configured board inside Trello. A standalone window can validate a selected
+project JSON/ZIP and preview the restoration plan, but cannot export board data or
+create a restoration board.
+
+There is no bundled sample-board mode. Synthetic captures and attachment bytes
+live only in `test/helpers/` for repeatable automated tests. Live checks exercise
+the actual SDK and API on one explicitly designated test board and new restoration
+boards only. See [export implementation and validation boundaries](docs/EXPORT.md).
 
 The embedded export uses the official SDK and a read-only REST API reader restricted
 to the explicitly configured board. It requires a registered Power-Up on an HTTPS
 host; the new content export has not yet been validated live or in Desktop.
 Historical [compatibility diagnostics](docs/PROTOTYPE.md) remain at `probe.html`.
-Restoration and additional export formats are planned.
+Restoration uses a separate scoped writer, explicit confirmation, and a durable
+local journal. See [restoration](docs/RESTORATION.md) and [formats](docs/FORMATS.md).
 
 `npm run check` checks types, TypeScript/CSS lint, code smells, formatting,
 coverage thresholds, and the production build. Use `npm run format` to apply
 formatting and `npm run lint:fix` for supported lint fixes.
 `npm run preview` serves that build at `/trello-exporter/export.html`. GitHub Actions
-checks the same code, scans Git history for secrets, and uploads a coverage artifact.
+checks the same code, scans push/PR commit ranges for secrets, and uploads a coverage artifact.
 CI does not deploy a website. A separate CD workflow publishes the checked site
 artifact to [GitHub Pages](https://selutin99.github.io/trello-exporter/) only after
 successful CI for a push to `main`. Coverage reports are never published. See
@@ -87,17 +93,20 @@ Project documentation and code comments are in English; the product supports
 Russian and English:
 
 - [Product specification and release scope](docs/SPECIFICATION.md)
-- [Export demo and validation boundaries](docs/EXPORT_DEMO.md)
+- [Export implementation and validation boundaries](docs/EXPORT.md)
 - [Snapshot and archive format](docs/SNAPSHOT_FORMAT.md)
+- [Restoration, fidelity, and recovery](docs/RESTORATION.md)
+- [Document and spreadsheet formats](docs/FORMATS.md)
 - [Market research and reference documentation](docs/RESEARCH.md)
 - [Contributing](CONTRIBUTING.md)
 - [Source layout and module boundaries](docs/ARCHITECTURE.md)
 - [Credential audit and repository hygiene](docs/SECURITY_AUDIT.md)
 
-The specification includes planned behavior; the export demo document records current implementation and validation boundaries.
-Live content export and restoration remain subject to the API feasibility and
-compatibility checks described in the specification. The local demo does not
-claim a completed live backup/restore cycle.
+The specification includes planned behavior; the export document records current
+implementation and validation boundaries. Live content export and restoration
+remain subject to the API feasibility and compatibility checks described in the
+specification. Automated synthetic tests do not establish a completed live
+backup/restore cycle.
 
 ## License
 
