@@ -297,17 +297,22 @@ legend {
   font-size: 11px;
 }
 .workflow-footer {
-  border-top: 1px solid var(--border);
-  padding-top: 18px;
+  margin-top: 20px;
+}
+.workflow-actions {
   display: flex;
-  gap: 20px;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
+}
+.workflow-footer hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 20px 0 16px;
 }
 .privacy-note {
   font-size: 11px;
   color: var(--subtle);
-  max-width: 330px;
 }
 .primary {
   background: #0c66e4;
@@ -446,11 +451,6 @@ body [hidden] {
   }
   .included ul {
     grid-template-columns: 1fr;
-  }
-  .workflow-footer {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 10px;
   }
   .hero {
     margin-top: 22px;

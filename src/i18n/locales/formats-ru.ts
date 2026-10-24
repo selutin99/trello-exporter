@@ -4,13 +4,9 @@ export const formatsRu = {
   formatNo: 'Нет',
   formatGlyphFallback:
     'Символы, недоступные во встроенных шрифтах, сохранены в виде кодов Unicode, например [U+1F642]',
-  exportMarkdownTitle: 'Markdown',
   exportMarkdownNote: 'Доска в виде документа, без файлов вложений',
-  exportPdfTitle: 'PDF',
   exportPdfNote: 'Документ с разбивкой на страницы для чтения и отправки',
-  exportXlsxTitle: 'XLSX',
   exportXlsxNote: 'Связанные листы с полными данными доски',
-  exportCsvTitle: 'CSV',
   exportCsvNote: 'Одна строка на карточку, связанные коллекции в ячейках JSON',
   formatCapture: 'Интервал экспорта',
   formatBoard: 'Доска',

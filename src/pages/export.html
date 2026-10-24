@@ -70,34 +70,28 @@
               ><input type="radio" name="format" value="zip" checked /><span class="format-top"
                 ><span class="format-icon">ZIP</span
                 ><span class="recommendation" data-i18n="exportRecommended"></span></span
-              ><strong data-i18n="exportZipTitle"></strong
               ><span class="subtle" data-i18n="exportZipNote"></span
             ></label>
             <label class="format-option"
               ><input type="radio" name="format" value="json" /><span class="format-top"
-                ><span class="format-icon">{ }</span></span
-              ><strong data-i18n="exportJsonTitle"></strong
+                ><span class="format-icon">JSON</span></span
               ><span class="subtle" data-i18n="exportJsonNote"></span
             ></label>
             <label class="format-option"
               ><input type="radio" name="format" value="md" /><span class="format-top"
                 ><span class="format-icon">MD</span></span
-              ><strong data-i18n="exportMarkdownTitle"></strong
               ><span class="subtle" data-i18n="exportMarkdownNote"></span></label
             ><label class="format-option"
               ><input type="radio" name="format" value="pdf" /><span class="format-top"
                 ><span class="format-icon">PDF</span></span
-              ><strong data-i18n="exportPdfTitle"></strong
               ><span class="subtle" data-i18n="exportPdfNote"></span></label
             ><label class="format-option"
               ><input type="radio" name="format" value="xlsx" /><span class="format-top"
                 ><span class="format-icon">XLSX</span></span
-              ><strong data-i18n="exportXlsxTitle"></strong
               ><span class="subtle" data-i18n="exportXlsxNote"></span></label
             ><label class="format-option"
               ><input type="radio" name="format" value="csv" /><span class="format-top"
                 ><span class="format-icon">CSV</span></span
-              ><strong data-i18n="exportCsvTitle"></strong
               ><span class="subtle" data-i18n="exportCsvNote"></span
             ></label>
           </div>
@@ -136,22 +130,25 @@
           ><button id="report" class="text-button" data-i18n="exportReport"></button>
         </section>
         <div class="workflow-footer">
+          <div class="workflow-actions">
+            <button id="export" class="primary" data-i18n="exportAction" disabled></button>
+          </div>
+          <hr />
           <p class="privacy-note" data-i18n="exportPrivacy"></p>
-          <button id="export" class="primary" data-i18n="exportAction" disabled></button>
+          <p class="subtle fine-print" data-i18n="exportConsistency"></p>
+          <details class="technical">
+            <summary data-i18n="exportDetails"></summary>
+            <p data-i18n="exportFileLimit"></p>
+            <p>
+              <a
+                href="%CONNECTED_APPS_URL%"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-i18n="manageAccess"
+              ></a>
+            </p>
+          </details>
         </div>
-        <p class="subtle fine-print" data-i18n="exportConsistency"></p>
-        <details class="technical">
-          <summary data-i18n="exportDetails"></summary>
-          <p data-i18n="exportFileLimit"></p>
-          <p>
-            <a
-              href="%CONNECTED_APPS_URL%"
-              target="_blank"
-              rel="noopener noreferrer"
-              data-i18n="manageAccess"
-            ></a>
-          </p>
-        </details>
       </section>
       <section id="restore-panel" role="tabpanel" aria-labelledby="restore-tab" hidden>
         <div class="hero">
@@ -196,30 +193,31 @@
           <button id="restore-report" data-i18n="restoreReport"></button>
         </section>
         <div class="workflow-footer">
-          <p class="privacy-note" data-i18n="restorePrivacy"></p>
-          <div class="restore-actions">
+          <div class="workflow-actions">
             <button id="restore-start" class="primary" data-i18n="restoreAction" disabled></button
             ><button id="restore-resume" data-i18n="restoreResume" hidden></button>
           </div>
+          <hr />
+          <p class="privacy-note" data-i18n="restorePrivacy"></p>
+          <p class="subtle fine-print" data-i18n="restoreConsistency"></p>
+          <details class="technical">
+            <summary data-i18n="exportDetails"></summary>
+            <p data-i18n="restoreFileLimit"></p>
+            <section id="restore-details" hidden>
+              <h3 data-i18n="restoreLimitations"></h3>
+              <ul id="restore-limitations"></ul>
+            </section>
+            <p data-i18n="restorePermission"></p>
+            <p>
+              <a
+                href="%CONNECTED_APPS_URL%"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-i18n="manageAccess"
+              ></a>
+            </p>
+          </details>
         </div>
-        <p class="subtle fine-print" data-i18n="restoreConsistency"></p>
-        <details class="technical">
-          <summary data-i18n="exportDetails"></summary>
-          <p data-i18n="restoreFileLimit"></p>
-          <section id="restore-details" hidden>
-            <h3 data-i18n="restoreLimitations"></h3>
-            <ul id="restore-limitations"></ul>
-          </section>
-          <p data-i18n="restorePermission"></p>
-          <p>
-            <a
-              href="%CONNECTED_APPS_URL%"
-              target="_blank"
-              rel="noopener noreferrer"
-              data-i18n="manageAccess"
-            ></a>
-          </p>
-        </details>
       </section>
       <footer>
         <a
