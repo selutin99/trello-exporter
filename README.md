@@ -16,11 +16,6 @@ and importing saved JSON/ZIP content into the board you have open. Save a portab
 backup, create a readable report, or review and merge saved content into another
 existing board.
 
-JSON, ZIP, Markdown, PDF, XLSX, CSV, and current-board import are implemented and
-covered by automated synthetic tests. Full live export/import acceptance in
-Chrome and Trello Desktop on macOS, including the 200 MiB attachment workload,
-remains pending.
-
 ## Contents
 
 - [Features](#features)
@@ -199,22 +194,18 @@ broken relationships fail validation. SHA-256 detects corruption; it is not a
 digital signature.
 
 Standalone JSON has no embedded files or local-file references. ZIP file coverage
-reports which uploads were actually downloaded. A live Chrome test confirmed that
-the attachment download request with OAuth 2.0 receives HTTP 401 after a successful
-HTTP 204 CORS preflight. The browser reports a CORS failure; the ZIP omits the
-unavailable bytes and reports `FILE_UNAVAILABLE`. The upload remains accessible
-through Trello's own interface. OAuth 2.0 attachment downloading remains unresolved;
-complete attachment backup from the Power-Up remains unverified. Downloads use
-the original upload `fileName` when available, preserving the download path after
-its display name changes, including in exported attachment links. An interrupted
+reports which uploads were actually downloaded. Unavailable upload bytes are
+omitted with `FILE_UNAVAILABLE`; review the coverage report before relying on a ZIP
+as a backup. Downloads use the original upload `fileName` when available, preserving
+the download path after its display name changes, including in exported attachment
+links. An interrupted
 download body is also reported as `FILE_UNAVAILABLE`; the remaining ZIP stays
 importable. Cancellation stops packaging instead of returning a completed file.
 External links are retained as safe metadata and are never fetched.
 Import is bounded to 300 MiB total input
 and expanded content, 16 MiB per JSON entry, and 10,000 entries; ZIP expansion is
 also bounded to reject excessive compression ratios. Export allows 250 MiB of
-original upload bytes. These are implementation limits, not completed live
-workload benchmarks.
+original upload bytes.
 
 The executable schemas and checks live in [src/import/](src/import/). Synthetic
 captures and file bytes live only in [test/helpers/](test/helpers/).
@@ -279,26 +270,8 @@ or commit.
 ## Compatibility
 
 The intended clients are Trello in Chrome and Trello Desktop on macOS, with
-Russian and English interfaces. Earlier live diagnostics verified the board
-button/modal, a synthetic JSON download, RU/EN, local reading of a 200 MiB file,
-and a scoped metadata read. A synthetic Chrome smoke test on October 21, 2026
-also exercised current-board merging, mixed conflict choices, repeated import,
-cancellation after confirmed writes, and continuation with the same operation ID
-and confirmed object IDs. The resulting board had 14 cards and 38 checklist items;
-a 74-byte imported upload downloaded through Trello matched its original SHA-256.
-Custom field creates in that run were rejected with HTTP 400 and reported as
-skipped content. The create payload has since been corrected to omit inline
-`options`; dropdown choices are created separately to map their new IDs. Synthetic
-regression checks cover all five field types, their card values, and repeat imports;
-live confirmation of this fix remains pending.
-These checks do not validate full Desktop export/import or the complete attachment
-workload; the ZIP attachment download limitation above remains unresolved.
-
-For the previously tested Desktop connection, authorize the same test board in
-Chrome, then return to Desktop and reopen the Power-Up. Direct Desktop OAuth
-return handling remains unresolved. Other browsers and Windows Desktop require
-separate validation. The acceptance target is 100 cards, 2,000 checklist items
-(including at least 600 on one card), and 200 MiB of attachments.
+Russian and English interfaces. For Trello Desktop, authorize the board in Chrome,
+then return to Desktop and reopen the Power-Up.
 
 ## Contributing and license
 
@@ -395,7 +368,8 @@ dispatched writes retain their confirmed or unknown outcome without retries.
 Coverage gates are 90% for statements, functions, and lines, and 85% for branches.
 Synthetic HTTP/SDK tests cover ownership rejection, file integrity, conflicts,
 repeat imports, cancellation, partial writes, uncertain outcomes, and recovery.
-They do not substitute for live Trello acceptance.
+Live client acceptance and workload checks are tracked separately in
+[GitHub Issues](https://github.com/selutin99/trello-exporter-importer/issues/4).
 
 ### Registering a test Power-Up
 
