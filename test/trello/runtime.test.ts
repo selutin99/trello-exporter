@@ -13,15 +13,16 @@ test('OAuth callback excludes Trello context, authorization codes, and board IDs
 });
 
 test('new and legacy callback paths discard incoming query and fragments', () => {
-  for (const prefix of ['', 'prototype/']) {
-    const settings = runtimeSettings(
-      `https://example.com/trello-exporter/${prefix}probe.html?board=TEST0001&clientId=public-client&code=synthetic#secret=synthetic`,
-    );
-    assert.equal(
-      settings.redirectUri,
-      `https://example.com/trello-exporter/${prefix}authorize.html?clientId=public-client`,
-    );
-  }
+  for (const base of ['trello-exporter', 'trello-exporter-importer'])
+    for (const prefix of ['', 'prototype/']) {
+      const settings = runtimeSettings(
+        `https://example.com/${base}/${prefix}probe.html?board=TEST0001&clientId=public-client&code=synthetic#secret=synthetic`,
+      );
+      assert.equal(
+        settings.redirectUri,
+        `https://example.com/${base}/${prefix}authorize.html?clientId=public-client`,
+      );
+    }
 });
 
 test('invalid public client IDs fail closed', () => {

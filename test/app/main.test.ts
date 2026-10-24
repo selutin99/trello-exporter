@@ -27,12 +27,12 @@ test('standalone app localizes, downloads synthetic JSON and saves a local repor
   button('download').click();
   expect(downloadJson).toHaveBeenCalledWith(
     expect.objectContaining({ synthetic: true }),
-    'trello-exporter-file-probe.json',
+    'trello-exporter-importer-file-probe.json',
   );
   button('report').click();
   expect(downloadJson).toHaveBeenLastCalledWith(
     expect.objectContaining({ apiWritesEnabled: false }),
-    'trello-exporter-compatibility-report.json',
+    'trello-exporter-importer-compatibility-report.json',
   );
 });
 

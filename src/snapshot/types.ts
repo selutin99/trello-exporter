@@ -6,6 +6,7 @@ import type {
   ExportStage,
   IssueCode,
 } from './codes';
+import type { ProductName } from '../config/product';
 
 export interface Coverage {
   status: CoverageStatus;
@@ -37,7 +38,7 @@ export interface Snapshot {
   format: 'trello-exporter.snapshot';
   formatVersion: '0.1.0';
   snapshotId: string;
-  exporter: { name: 'trello-exporter'; version: string };
+  exporter: { name: ProductName; version: string };
   capture: {
     startedAt: string;
     completedAt: string;

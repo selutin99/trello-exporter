@@ -72,7 +72,8 @@ export class RestoreUI {
       .element('restore-cancel', HTMLButtonElement)
       .addEventListener('click', () => this.#session.cancel());
     this.#view.element('restore-report', HTMLButtonElement).addEventListener('click', () => {
-      if (this.model.report) downloadJson(this.model.report, 'trello-exporter-restore-report.json');
+      if (this.model.report)
+        downloadJson(this.model.report, 'trello-exporter-importer-restore-report.json');
     });
     for (const [id, active] of [
       ['restore-tab', true],

@@ -1,9 +1,9 @@
 {
-  "name": "trello-exporter",
+  "name": "trello-exporter-importer",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Trello Power-Up for board snapshots, restoration, and document exports",
+  "description": "Trello Power-Up for board exports in six formats and reviewed JSON/ZIP imports into the current board",
   "license": "MIT",
   "engines": {
     "node": "^20.19.0 || ^22.13.0 || >=24"

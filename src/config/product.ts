@@ -1,2 +1,8 @@
-/** Product identity recorded in portable snapshots */
-export const product = Object.freeze({ name: 'trello-exporter' as const, version: '0.0.0' });
+/** Accepted producer identities; legacy files retain their original metadata */
+export enum ProductName {
+  Current = 'trello-exporter-importer',
+  Legacy = 'trello-exporter',
+}
+
+/** Product identity recorded in new portable snapshots */
+export const product = Object.freeze({ name: ProductName.Current, version: '0.0.0' });

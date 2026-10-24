@@ -14,6 +14,23 @@ test('local checkpoints round trip without retaining imported bytes or token pro
   store.save(journal);
   expect(store.read()).toEqual(journal);
 });
+
+test.each([RestoreStatus.Cancelled, RestoreStatus.Unknown])(
+  'pre-rebrand %s journals keep their continuation or uncertainty guard',
+  (status) => {
+    const previous = restoreJournal();
+    previous.status = status;
+    previous.pending = status === RestoreStatus.Unknown ? 'cards/uncertain' : null;
+    localStorage.setItem('trello-exporter-restore-journal', JSON.stringify(previous));
+    const journal = new LocalJournalStore(localStorage).read();
+    const context = { boardId: sourceBoard.id, workspaceId, workspaceName: 'Synthetic Workspace' };
+    expect(journal).toEqual(previous);
+    expect(canResumeJournal(journal, previous.checksum, context)).toBe(
+      status === RestoreStatus.Cancelled,
+    );
+    expect(hasUncertainWrite(journal)).toBe(status === RestoreStatus.Unknown);
+  },
+);
 test('corrupt or unavailable storage is rejected with fixed errors', () => {
   const store = new LocalJournalStore(localStorage);
   localStorage.setItem('trello-exporter-restore-journal', '{}');

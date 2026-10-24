@@ -16,14 +16,14 @@ test('HTML service placeholders resolve in scripts and repeated links without br
 });
 
 test('legacy pages are identical built HTML, retaining absolute assets without redirects', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'trello-exporter-build-test-'));
+  const directory = await mkdtemp(join(tmpdir(), 'trello-exporter-importer-build-test-'));
   try {
     await mkdir(join(directory, 'assets'));
     await mkdir(join(directory, 'pages'));
     for (const page of pageNames) {
       await writeFile(
         join(directory, 'pages', `${page}.html`),
-        `<script src="/trello-exporter/assets/${page}-hashed.js"></script>`,
+        `<script src="/trello-exporter-importer/assets/${page}-hashed.js"></script>`,
       );
     }
     const close = legacyPages(directory).closeBundle;

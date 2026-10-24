@@ -5,6 +5,7 @@ import type { Locale } from '../i18n';
 import { BlockKind, documentBlocks } from './document';
 import { pdfFonts, pdfText } from './pdf-fonts';
 import { translations } from '../i18n';
+import { product } from '../config/product';
 
 /**
  * Builds a locally rendered, paginated PDF with embedded Latin/Cyrillic and Japanese fonts
@@ -36,7 +37,7 @@ export async function pdfExport(snapshot: Snapshot, locale: Locale): Promise<Blo
       margin: [0, 16, 0, 0],
     });
   const definition: TDocumentDefinitions = {
-    info: { title: snapshot.board.name, author: 'trello-exporter', subject: 'Board export' },
+    info: { title: snapshot.board.name, author: product.name, subject: 'Board export' },
     pageSize: 'A4',
     pageMargins: [42, 42, 42, 44],
     defaultStyle: { font: 'Roboto', fontSize: 10, lineHeight: 1.25, color: '#172b4d' },

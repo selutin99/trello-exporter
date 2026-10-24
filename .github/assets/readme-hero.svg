@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440" viewBox="0 0 1200 440" fill="none" role="img" aria-labelledby="title description">
-  <title id="title">trello-exporter — Your board, saved</title>
+  <title id="title">trello-exporter-importer — Your board, saved</title>
   <desc id="description">A synthetic board becomes a portable snapshot, ready to merge into the current Trello board</desc>
   <defs>
     <linearGradient id="background" x1="0" y1="0" x2="1200" y2="440" gradientUnits="userSpaceOnUse"><stop stop-color="#101C30"/><stop offset="1" stop-color="#122D35"/></linearGradient>
@@ -14,7 +14,7 @@
   <rect x="83" y="57" width="15" height="20" rx="4" fill="#102A36"/>
   <path d="m82 89 6 6 12-13" stroke="#102A36" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
   <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
-    <text x="134" y="75" fill="#F0F9FF" font-size="30" font-weight="700" letter-spacing="-.7">trello-exporter</text>
+    <text x="134" y="75" fill="#F0F9FF" font-size="30" font-weight="700" letter-spacing="-.7">trello-exporter-importer</text>
     <text x="135" y="101" fill="#94B1C3" font-size="15">OPEN SOURCE · LOCAL PROCESSING · RU / EN</text>
     <text x="48" y="170" fill="#F0F9FF" font-size="43" font-weight="700" letter-spacing="-1.3">Your board, saved</text>
     <text x="49" y="204" fill="#AEC6D5" font-size="19">Capture the present · Review the differences · Keep moving</text>

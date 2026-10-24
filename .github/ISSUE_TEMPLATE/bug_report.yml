@@ -1,11 +1,11 @@
 name: Bug report
-description: Report a reproducible bug in trello-exporter
+description: Report a reproducible bug in trello-exporter-importer
 title: '[Bug]: '
 body:
   - type: markdown
     attributes:
       value: |
-        Thank you for helping improve trello-exporter
+        Thank you for helping improve trello-exporter-importer
 
         Before opening an issue, search existing issues and make sure the bug has not already been reported
 

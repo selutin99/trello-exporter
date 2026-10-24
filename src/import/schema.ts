@@ -10,6 +10,7 @@ import type { Snapshot } from '../snapshot/types';
 import { safeLink } from '../snapshot/normalize';
 import { ImportError, ImportErrorCode } from './codes';
 import { validateReferences } from './references';
+import { ProductName } from '../config/product';
 
 const id = z.string().regex(/^[a-zA-Z0-9_-]{1,128}$/);
 const text = z.string().max(500_000);
@@ -35,7 +36,7 @@ const snapshotSchema = z.object({
   format: z.literal('trello-exporter.snapshot'),
   formatVersion: z.literal('0.1.0'),
   snapshotId: z.uuid(),
-  exporter: z.object({ name: z.literal('trello-exporter'), version: z.string().max(100) }),
+  exporter: z.object({ name: z.enum(ProductName), version: z.string().max(100) }),
   capture: z.object({
     startedAt: z.iso.datetime({ offset: true }),
     completedAt: z.iso.datetime({ offset: true }),

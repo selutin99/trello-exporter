@@ -16,7 +16,7 @@ export function loadPage(
 ): void {
   const html = readFileSync(new NodeURL(`../../src/pages/${page}.html`, import.meta.url), 'utf8');
   document.body.innerHTML = /<body>([\s\S]*?)<\/body>/.exec(html)?.[1] ?? '';
-  window.history.replaceState(null, '', `/trello-exporter/${page}.html?${query}`);
+  window.history.replaceState(null, '', `/trello-exporter-importer/${page}.html?${query}`);
   window.localStorage.clear();
   vi.spyOn(document, 'readyState', 'get').mockReturnValue('complete');
   vi.stubGlobal('TrelloPowerUp', undefined);

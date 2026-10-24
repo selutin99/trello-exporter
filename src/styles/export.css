@@ -67,9 +67,14 @@ a {
   font-size: 17px;
   font-weight: 650;
   letter-spacing: -0.4px;
+  min-width: 0;
 }
 .brand img {
   border-radius: 7px;
+  flex-shrink: 0;
+}
+.brand span {
+  overflow-wrap: anywhere;
 }
 .language-picker select {
   appearance: none;

@@ -49,7 +49,7 @@ export const exportEn = {
   exportRefresh: 'Update',
   exportEmpty: 'There are no active cards on this board to export',
   exportLoading: 'Loading board…',
-  exportStandalone: 'Open trello-exporter from your Trello board to export its content',
+  exportStandalone: 'Open trello-exporter-importer from your Trello board to export its content',
   exportBestEffort: 'Best-effort capture',
   exportFileLimit:
     'ZIP attachment budget: 250 MiB. Unavailable or oversized files are listed in warnings',

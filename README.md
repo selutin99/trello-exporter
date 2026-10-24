@@ -1,19 +1,20 @@
 <p align="center">
-  <img src=".github/assets/readme-hero.svg" alt="trello-exporter — Your board, saved" width="1200" />
+  <img src=".github/assets/readme-hero.svg" alt="trello-exporter-importer — Your board, saved" width="1200" />
 </p>
 
 <p align="center">
-  <a href="https://github.com/selutin99/trello-exporter/actions/workflows/ci.yml"><img src="https://github.com/selutin99/trello-exporter/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
+  <a href="https://github.com/selutin99/trello-exporter-importer/actions/workflows/ci.yml"><img src="https://github.com/selutin99/trello-exporter-importer/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-087f73" alt="MIT license" /></a>
   <img src="https://img.shields.io/badge/TypeScript-strict-3178c6" alt="Strict TypeScript" />
   <img src="https://img.shields.io/badge/interface-English%20%2F%20Russian-475569" alt="English and Russian interface" />
 </p>
 
-# trello-exporter
+# trello-exporter-importer
 
-An open-source Trello Power-Up for exporting board snapshots and merging them
-back into the board you have open. Save a portable backup, create a readable
-report, or bring saved content into another existing board.
+An open-source Trello Power-Up for exporting active board content in six formats
+and importing saved JSON/ZIP content into the board you have open. Save a portable
+backup, create a readable report, or review and merge saved content into another
+existing board.
 
 JSON, ZIP, Markdown, PDF, XLSX, CSV, and current-board import are implemented and
 covered by automated synthetic tests. Full live export/import acceptance in
@@ -52,10 +53,15 @@ outside the export scope.
 
 ## Export flow
 
-1. Open **trello-exporter** from the board's Power-Ups
-2. Update board information and choose an export format
-3. Export, then review the completeness report and any missing content
-4. Keep JSON or ZIP if you intend to import the saved state later
+1. Open **trello-exporter-importer** from the board's Power-Ups
+2. Update board information and choose ZIP, JSON, Markdown, PDF, XLSX, or CSV
+3. Select **Export**, then review the file's completeness and any missing content
+4. Download the prepared file; keep JSON or ZIP for a later import
+
+Each format card has one format marker and a description. Export and import share
+the same footer layout: a centered action, a divider, a full-width local-processing
+notice, a separate duration notice, and expandable technical details. Import's
+technical details also describe permissions and fidelity limits.
 
 Boards without active cards in active lists cannot be exported. If cards are added
 to an empty board, update the board information before exporting. A fresh capture
@@ -100,7 +106,7 @@ flowchart TD
     B --> C[Read the board from the live Power-Up context]
     C --> D[Compare snapshot and current content]
     D --> E{Identity or value conflicts?}
-    E -->|Yes| F[Match / add separately / skip<br/>Keep current / use snapshot]
+    E -->|Yes| F[Match / add separately / skip<br/>Keep current / use file]
     F --> D
     E -->|Resolved| G[Review and confirm the plan]
     G --> H{Board still matches the reviewed state?}
@@ -112,15 +118,15 @@ flowchart TD
     style I fill:#e3f6ee,stroke:#16846b,color:#174a3e
 ```
 
-| Situation                                 | Behavior                                                                                 |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Same ID and matching supported values     | Reuse the existing object; no write                                                      |
-| Missing object with no matching candidate | Add it under its mapped parent                                                           |
-| Same name with different IDs              | Ask which current object to match, add separately, or skip the snapshot object           |
-| Different supported values                | Require **Keep current** or **Use snapshot** per field; bulk value choices are available |
-| Changed comment, attachment, or option    | Keep the current object or add a separate copy from the snapshot                         |
-| Content present only on the current board | Preserve it                                                                              |
-| Board changes after review                | Stop and require a fresh comparison                                                      |
+| Situation                                 | Behavior                                                                             |
+| ----------------------------------------- | ------------------------------------------------------------------------------------ |
+| Same ID and matching supported values     | Reuse the existing object; no write                                                  |
+| Missing object with no matching candidate | Add it under its mapped parent                                                       |
+| Same name with different IDs              | Ask which current object to match, add separately, or skip the snapshot object       |
+| Different supported values                | Require **Keep current** or **Use file** per field; bulk value choices are available |
+| Changed comment, attachment, or option    | Keep the current object or add a separate copy from the snapshot                     |
+| Content present only on the current board | Preserve it                                                                          |
+| Board changes after review                | Stop and require a fresh comparison                                                  |
 
 This is a two-way comparison of saved and current data. A snapshot does not
 contain a common ancestor for an automatic three-way merge. Names are candidates,
@@ -144,8 +150,8 @@ automatically archives current content.
 | XLSX     | Related worksheets with typed values      | No                        | No     |
 | CSV      | Flat table, one row per card              | No                        | No     |
 
-HTML export is planned. Trello's native JSON exports, arbitrary ZIP files, and
-diagnostic reports are not accepted as project snapshots.
+Trello's native JSON exports, arbitrary ZIP files, and diagnostic reports are not
+accepted as project snapshots. Import accepts only this project's JSON/ZIP files.
 
 Markdown and PDF include literal board content, checklists, comments, and
 available attachment links. PDF embeds bundled fonts; unsupported characters are
@@ -168,10 +174,17 @@ relationships, capture information, per-section `coverage`, and `issues`. Dates
 use UTC; unknown values are explicit. Collection arrays remain present when empty.
 Sibling `order` values preserve relative order instead of Trello's numeric `pos`.
 
+New files identify their producer as `trello-exporter-importer`. Import also accepts
+the former `trello-exporter` producer name. The serialized identifiers
+`trello-exporter.snapshot`, `trello-exporter.archive`, and
+`trello-exporter.restore-report` intentionally retain their original values and
+version: the rebrand does not rename the file formats. Exported filenames, interface
+labels, PDF authorship, and repository links use the new name.
+
 ZIP adds an integrity inventory and available original uploads:
 
 ```text
-board-snapshot.zip
+trello-exporter-importer-<date>.zip
 ├── manifest.json
 ├── snapshot.json
 └── attachments/
@@ -193,8 +206,11 @@ unavailable bytes and reports `FILE_UNAVAILABLE`. The upload remains accessible
 through Trello's own interface. OAuth 2.0 attachment downloading remains unresolved;
 complete attachment backup from the Power-Up remains unverified. Downloads use
 the original upload `fileName` when available, preserving the download path after
-its display name changes. External links
-are retained as safe metadata and are never fetched. Import is bounded to 300 MiB total input
+its display name changes, including in exported attachment links. An interrupted
+download body is also reported as `FILE_UNAVAILABLE`; the remaining ZIP stays
+importable. Cancellation stops packaging instead of returning a completed file.
+External links are retained as safe metadata and are never fetched.
+Import is bounded to 300 MiB total input
 and expanded content, 16 MiB per JSON entry, and 10,000 entries; ZIP expansion is
 also bounded to reject excessive compression ratios. Export allows 250 MiB of
 original upload bytes. These are implementation limits, not completed live
@@ -215,6 +231,11 @@ browser on the same board, choose **Compare again**, review the updated plan, an
 continue the last operation. Already confirmed creates are reused. A stale or
 incompatible continuation is blocked. Legacy journals from the former new-board
 restoration flow cannot select a destination or resume it.
+
+The same-browser journal storage key remains unchanged during the rebrand, so
+existing mappings, pending writes, and continuation checkpoints are not discarded.
+The GitHub Pages hostname and Power-Up identity must remain the same during the
+URL-path migration; clearing local storage loses the recovery history.
 
 A lost write response has status `unknown`: the server may have applied the
 request. Automatic repetition is blocked. Inspect the board and downloaded report
@@ -282,7 +303,7 @@ separate validation. The acceptance target is 100 cards, 2,000 checklist items
 ## Contributing and license
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and the repository's
-[issue templates](https://github.com/selutin99/trello-exporter/issues/new/choose).
+[issue templates](https://github.com/selutin99/trello-exporter-importer/issues/new/choose).
 Use synthetic examples and include the relevant coverage or operation outcome.
 
 [MIT](LICENSE), copyright 2026 Alexander Selyutin. This is an independent project
@@ -294,12 +315,14 @@ Use Node.js 24, or a compatible runtime (`^20.19.0`, `^22.13.0`, or `>=24`).
 The app is one strict TypeScript npm project built with Vite.
 
 ```sh
+git clone https://github.com/selutin99/trello-exporter-importer.git
+cd trello-exporter-importer
 npm ci
 npm run check
 npm run dev
 ```
 
-Open `http://127.0.0.1:4173/trello-exporter/pages/export.html` for the local UI.
+Open `http://127.0.0.1:4173/trello-exporter-importer/pages/export.html` for the local UI.
 A standalone page validates local files; current-board comparison, export, and
 writes require the registered Power-Up opened inside Trello. There is no bundled
 demo mode and no automatic board access when a local preview opens.
@@ -367,7 +390,7 @@ dispatched writes retain their confirmed or unknown outcome without retries.
 | `npm run format`        | Apply formatting                                               |
 | `npm run lint:fix`      | Apply supported lint fixes                                     |
 | `npm run build`         | Create ignored `dist/` output                                  |
-| `npm run preview`       | Serve the build at `/trello-exporter/export.html`              |
+| `npm run preview`       | Serve the build at `/trello-exporter-importer/export.html`     |
 
 Coverage gates are 90% for statements, functions, and lines, and 85% for branches.
 Synthetic HTTP/SDK tests cover ownership rejection, file integrity, conflicts,
@@ -400,8 +423,25 @@ separate artifacts. Gitleaks scans push/PR commit ranges; manual CI dispatch sca
 history. CI itself does not deploy.
 
 A separate CD workflow publishes only the successful main-branch push CI run's
-`power-up-site` artifact to [GitHub Pages](https://selutin99.github.io/trello-exporter/).
+`power-up-site` artifact to [GitHub Pages](https://selutin99.github.io/trello-exporter-importer/).
 It uses the triggering run ID and does not rebuild a newer checkout. Pull request
 artifacts and coverage reports are never deployed. Set the repository's Pages
 source to **GitHub Actions**. If the seven-day site artifact expires, rerun CI.
 Only the deployment job receives Pages write permissions.
+
+### Branding and deployment URLs
+
+The repository, npm project, and Power-Up display name are
+`trello-exporter-importer`. Production assets use the
+`/trello-exporter-importer/` base path. The registered connector, icon, privacy,
+support, and OAuth callback URLs must be updated with the hosted build when moving
+from the former repository name. Preserve query parameters containing the public
+client ID and keep the existing Power-Up and OAuth client rather than creating
+replacement identities.
+
+GitHub redirects repository links after a rename, but project-site URLs do not
+receive that redirect. Register the exact new same-origin `authorize.html` URL,
+including its public `clientId`, before switching the connector. Retain any needed
+`/prototype/authorize.html` callback because compatibility pages are still built.
+See [GitHub repository rename behavior](https://docs.github.com/en/repositories/creating-and-managing-repositories/renaming-a-repository)
+and [Trello OAuth callback configuration](https://developer.atlassian.com/cloud/trello/guides/rest-api/oauth-2-client-configuration/).

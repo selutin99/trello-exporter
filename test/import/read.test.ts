@@ -5,6 +5,7 @@ import { buildArchive, jsonBytes, sha256 } from '../../src/snapshot/archive';
 import { readImport } from '../../src/import/read';
 import { ImportError, ImportErrorCode } from '../../src/import/codes';
 import { MAXIMUM_IMPORT_BYTES, MAXIMUM_JSON_BYTES } from '../../src/import/zip';
+import { ProductName } from '../../src/config/product';
 
 const json = (value: unknown) => new Blob([jsonBytes(value)]);
 async function archive() {
@@ -12,6 +13,23 @@ async function archive() {
     await (await buildArchive(createSyntheticCapture(), syntheticFileReader)).arrayBuffer(),
   );
 }
+
+test.each(Object.values(ProductName))(
+  'JSON and ZIP retain compatible content and integrity for producer %s',
+  async (name) => {
+    for (const zipped of [false, true]) {
+      const capture = createSyntheticCapture();
+      capture.snapshot.exporter.name = name;
+      const input = zipped
+        ? await buildArchive(capture, syntheticFileReader)
+        : json(capture.snapshot);
+      const imported = await readImport(input);
+      expect(imported.snapshot).toEqual(capture.snapshot);
+      expect(imported.snapshot.exporter.name).toBe(name);
+      expect(imported.files.size).toBe(zipped ? 3 : 0);
+    }
+  },
+);
 
 test('project JSON and ZIP exports round trip with checked original attachment bytes', async () => {
   const capture = createSyntheticCapture();

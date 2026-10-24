@@ -3,7 +3,7 @@ import type { privacyEn } from './privacy-en';
 /** Russian data-handling notice for the selected interface language */
 export const privacyRu = {
   privacyProcessing:
-    'trello-exporter готовит файлы JSON, ZIP, Markdown, PDF, XLSX и CSV в браузере или окне Trello Desktop',
+    'trello-exporter-importer готовит файлы JSON, ZIP, Markdown, PDF, XLSX и CSV в браузере или окне Trello Desktop',
   privacyScope:
     'При запуске из авторизованного Power-Up экспорт читает только текущую открытую доску: активные списки и карточки, чек-листы, комментарии, метки, отображаемые сведения об участниках, пользовательские поля и сведения о вложениях. Архивные списки и карточки исключены. В ZIP скачиваются доступные файлы, загруженные в Trello; внешние ссылки не обходятся. Экспорт не изменяет данные доски',
   privacyStorage:
@@ -17,5 +17,5 @@ export const privacyRu = {
   privacyRevocation:
     'Отозвать доступ можно в подключенных приложениях Atlassian. Удаление локальных файлов и отзыв доступа — отдельные действия',
   privacySupport: 'Для обратной связи используйте GitHub Issues только с синтетическими примерами',
-  privacyUpdated: 'Обновлено 21 октября 2026',
+  privacyUpdated: 'Обновлено 24 октября 2026',
 } satisfies { [Key in keyof typeof privacyEn]: string };

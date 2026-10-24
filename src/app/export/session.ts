@@ -128,7 +128,7 @@ export class ExportSession {
       this.#model = {
         ...this.#model,
         board: overview,
-        result: { blob, snapshot, format, filename: `trello-exporter-${date}.${format}` },
+        result: { blob, snapshot, format, filename: `trello-exporter-importer-${date}.${format}` },
         state:
           snapshot.capture.outcome === CaptureOutcome.Complete
             ? ExportState.Complete

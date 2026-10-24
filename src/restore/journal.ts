@@ -15,6 +15,7 @@ import type { MergePlan } from './merge/types';
 import { MergeActionKind } from './merge/types';
 import { restorationPlan } from './plan';
 
+// Keep existing checkpoints and uncertain-write guards across product renames.
 const key = 'trello-exporter-restore-journal';
 const journalSchema = z.object({
   format: z.literal('trello-exporter.restore-report'),

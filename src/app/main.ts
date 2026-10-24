@@ -56,7 +56,7 @@ view.language.addEventListener('change', () => {
 view.download.addEventListener('click', () => {
   downloadJson(
     { format: DiagnosticFormat.FileProbe, synthetic: true, text: translations[locale].sampleText },
-    'trello-exporter-file-probe.json',
+    'trello-exporter-importer-file-probe.json',
   );
   model.setStatus(Status.Downloaded);
   model.record({ code: EventCode.SampleDownloadRequested });
@@ -80,7 +80,7 @@ view.scan.addEventListener('click', () => {
 });
 view.cancel.addEventListener('click', () => model.cancel());
 view.report.addEventListener('click', () => {
-  downloadJson(model.report, 'trello-exporter-compatibility-report.json');
+  downloadJson(model.report, 'trello-exporter-importer-compatibility-report.json');
   model.setStatus(Status.Reported);
 });
 view.connect.addEventListener('click', () => {

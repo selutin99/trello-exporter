@@ -1,7 +1,7 @@
 /** English data-handling notice for the selected interface language */
 export const privacyEn = {
   privacyProcessing:
-    'trello-exporter prepares JSON, ZIP, Markdown, PDF, XLSX, and CSV files in your browser or Trello Desktop window',
+    'trello-exporter-importer prepares JSON, ZIP, Markdown, PDF, XLSX, and CSV files in your browser or Trello Desktop window',
   privacyScope:
     'When opened as an authorized Trello Power-Up, export reads only the currently open board: active lists and cards, checklists, comments, labels, member display identities, custom fields, and attachment metadata. Archived lists and cards are excluded. ZIP downloads available Trello-uploaded files; external attachment links are not fetched. Export does not modify board data',
   privacyStorage:
@@ -15,5 +15,5 @@ export const privacyEn = {
   privacyRevocation:
     'Revoke access through Atlassian connected apps. Deleting local files and revoking OAuth access are separate actions',
   privacySupport: 'For support, use GitHub Issues with synthetic examples only',
-  privacyUpdated: 'Updated October 21, 2026',
+  privacyUpdated: 'Updated October 24, 2026',
 } as const;

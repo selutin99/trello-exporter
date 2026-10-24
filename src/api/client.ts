@@ -120,7 +120,7 @@ export class TestBoardApi {
       body: {
         idList: listId,
         name: '[Exporter test] API probe',
-        desc: 'Synthetic test data created by the trello-exporter prototype.',
+        desc: 'Synthetic test data created by the trello-exporter-importer prototype.',
       },
       ...options,
     });

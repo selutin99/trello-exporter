@@ -110,7 +110,7 @@ export function syntheticFiles(): {
       name: 'launch-brief.txt',
       mimeType: 'text/plain',
       bytes: encode(
-        'Studio launch\n\nSynthetic brief for trello-exporter.\nGoal: preserve current board content and original files.\nUnicode: café · 東京 · ✓\n',
+        'Studio launch\n\nSynthetic brief for trello-exporter-importer.\nGoal: preserve current board content and original files.\nUnicode: café · 東京 · ✓\n',
       ),
     },
     {

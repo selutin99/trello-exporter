@@ -23,8 +23,8 @@ test('connector registers localized buttons and signs the modal through the SDK'
   await entry?.callback(frame);
   expect(frame.modal).toHaveBeenCalledWith(
     expect.objectContaining({
-      url: 'http://localhost:3000/trello-exporter/export.html?board=TEST0001&clientId=public-client',
-      title: 'trello-exporter',
+      url: 'http://localhost:3000/trello-exporter-importer/export.html?board=TEST0001&clientId=public-client',
+      title: 'trello-exporter-importer',
       accentColor: '#1D2125',
     }),
   );

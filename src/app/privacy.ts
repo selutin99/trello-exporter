@@ -1,4 +1,5 @@
 import { chooseLocale, localizePage, translations } from '../i18n';
+import { product } from '../config/product';
 
 let preference: string | null = null;
 try {
@@ -10,4 +11,4 @@ const locale = chooseLocale(
   new URL(window.location.href).searchParams.get('lang') ?? preference ?? navigator.language,
 );
 localizePage(locale, document);
-document.title = `trello-exporter · ${translations[locale].privacy}`;
+document.title = `${product.name} · ${translations[locale].privacy}`;

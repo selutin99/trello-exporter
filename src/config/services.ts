@@ -4,7 +4,7 @@ export const serviceUrls = Object.freeze({
   trelloBoardOrigin: 'https://trello.com',
   powerUpSdk: 'https://p.trellocdn.com/power-up.min.js',
   connectedApps: 'https://id.atlassian.com/manage-profile/apps',
-  supportIssues: 'https://github.com/selutin99/trello-exporter/issues',
+  supportIssues: 'https://github.com/selutin99/trello-exporter-importer/issues',
 });
 
 /** HTML placeholders resolved by the Vite pipeline in development and production */

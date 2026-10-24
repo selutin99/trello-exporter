@@ -51,7 +51,8 @@ export const exportRu = {
   exportRefresh: 'Обновить',
   exportEmpty: 'На доске нет активных карточек для экспорта',
   exportLoading: 'Загружаем доску…',
-  exportStandalone: 'Откройте trello-exporter с вашей доски Trello, чтобы выгрузить ее содержимое',
+  exportStandalone:
+    'Откройте trello-exporter-importer с вашей доски Trello, чтобы выгрузить ее содержимое',
   exportBestEffort: 'Снимок за интервал',
   exportFileLimit:
     'Лимит файлов в ZIP: 250 МиБ. Недоступные и слишком большие файлы попадут в предупреждения',

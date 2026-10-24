@@ -52,7 +52,7 @@ const outputDirectory = resolve(projectRoot, 'dist');
 export default defineConfig({
   root: resolve(projectRoot, 'src'),
   appType: 'mpa',
-  base: '/trello-exporter/',
+  base: '/trello-exporter-importer/',
   publicDir: false,
   plugins: [
     {

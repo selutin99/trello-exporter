@@ -65,7 +65,7 @@ view.element('report', HTMLButtonElement).addEventListener('click', () => {
         coverage: snapshot.coverage,
         issues: snapshot.issues,
       },
-      'trello-exporter-report.json',
+      'trello-exporter-importer-report.json',
     );
 });
 view.element('refresh', HTMLButtonElement).addEventListener('click', () => {
