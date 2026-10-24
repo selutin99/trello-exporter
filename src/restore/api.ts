@@ -8,13 +8,13 @@ import { ApiErrorCode } from '../shared/error-codes';
 import { captureBoard } from '../snapshot/capture';
 import type { Snapshot } from '../snapshot/types';
 import { RestoreError, RestoreErrorCode, RestoreResource } from './codes';
-import type { RestoreContext, RestoreTarget } from './types';
+import type { RestoreContext, RestoreTarget, RestoreWriter } from './types';
 import { canonicalJson } from '../shared/json';
 import { assertCreatePayload, assertUpdatePayload, assertExpectedValues } from './payloads';
 import { RestoreScope } from './scope';
 
 /** Merge transport restricted to the currently open SDK board; board creation is not exposed */
-export class RestoreApi {
+export class RestoreApi implements RestoreWriter {
   readonly #transport: Transport;
   readonly #scope: RestoreScope;
   /**

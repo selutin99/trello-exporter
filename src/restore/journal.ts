@@ -9,6 +9,11 @@ import {
   RestoreWarning,
 } from './codes';
 import type { JournalStore, RestoreContext, RestoreJournal, MergeJournal } from './types';
+import type { RestoreTarget } from './types';
+import type { ImportedBoard } from '../import/read';
+import type { MergePlan } from './merge/types';
+import { MergeActionKind } from './merge/types';
+import { restorationPlan } from './plan';
 
 const key = 'trello-exporter-restore-journal';
 const journalSchema = z.object({
@@ -136,4 +141,67 @@ function hasCommentSteps(journal: RestoreJournal): boolean {
   return [...Object.keys(journal.completed), ...journal.skipped].some((key) =>
     key.startsWith(`${RestoreResource.Comment}/`),
   );
+}
+
+interface NewMergeJournal {
+  imported: ImportedBoard;
+  context: RestoreContext;
+  target: RestoreTarget;
+  plan: MergePlan;
+  planned: Record<string, string>;
+  locale: Locale;
+  previous: RestoreJournal | null;
+}
+
+/**
+ * Creates token-free operation metadata from a revalidated current-board merge
+ * @param input - Verified destination, reviewed writes, file identity, and reusable mappings
+ * @returns An unsaved running journal with no pending or completed writes
+ */
+export function createMergeJournal({
+  imported,
+  context,
+  target,
+  plan,
+  planned,
+  locale,
+  previous,
+}: NewMergeJournal): MergeJournal {
+  const now = new Date().toISOString();
+  const creates = plan.actions.filter((action) => action.kind !== MergeActionKind.Update).length;
+  return {
+    format: 'trello-exporter.restore-report',
+    formatVersion: '0.1.0',
+    operationId: crypto.randomUUID(),
+    checksum: imported.checksum,
+    snapshotId: imported.snapshot.snapshotId,
+    sourceContextId: context.boardId,
+    workspaceId: context.workspaceId,
+    target,
+    startedAt: now,
+    updatedAt: now,
+    status: RestoreStatus.Running,
+    pending: null,
+    completed: {},
+    skipped: [],
+    warnings: plan.actions.length ? restorationPlan(imported).warnings : [],
+    error: null,
+    commentLocale: locale,
+    mode: RestoreMode.Merge,
+    sourceBoardId: imported.snapshot.board.id,
+    bindings: { ...plan.bindings },
+    decisions: { ...plan.decisions },
+    planned,
+    commentParts: Object.fromEntries(
+      Object.entries(previous?.commentParts ?? {}).filter(
+        ([key]) => previous?.bindings?.[key] === plan.bindings[key],
+      ),
+    ),
+    merge: {
+      plannedCreates: creates,
+      plannedUpdates: plan.actions.length - creates,
+      unchanged: plan.unchanged,
+      retained: plan.retained,
+    },
+  };
 }

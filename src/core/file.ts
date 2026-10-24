@@ -1,5 +1,6 @@
 import { ProbeError } from './errors';
 import { ProbeErrorCode } from '../shared/error-codes';
+import { readByteChunks } from './stream';
 
 export interface LocalFile {
   readonly size: number;
@@ -15,26 +16,8 @@ export interface LocalFile {
  */
 export async function scanLocalFile(file: LocalFile, signal: AbortSignal): Promise<number> {
   signal.throwIfAborted();
-  const reader = file.stream().getReader();
-  const abort = () => {
-    void reader.cancel().catch(() => {});
-  };
-  signal.addEventListener('abort', abort, { once: true });
   let bytes = 0;
-  try {
-    while (true) {
-      signal.throwIfAborted();
-      const chunk = await reader.read();
-      signal.throwIfAborted();
-      if (chunk.done) break;
-      bytes += chunk.value.byteLength;
-    }
-    if (bytes !== file.size) throw new ProbeError(ProbeErrorCode.FileSizeMismatch);
-    return bytes;
-  } finally {
-    signal.removeEventListener('abort', abort);
-    // Also release the source on stream errors; cancellation failure is not diagnostic data.
-    await reader.cancel().catch(() => {});
-    reader.releaseLock();
-  }
+  for await (const chunk of readByteChunks(file.stream(), signal)) bytes += chunk.byteLength;
+  if (bytes !== file.size) throw new ProbeError(ProbeErrorCode.FileSizeMismatch);
+  return bytes;
 }

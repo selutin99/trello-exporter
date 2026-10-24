@@ -1,21 +1,11 @@
 import type { ImportedBoard } from '../import/read';
-import type { Locale } from '../i18n';
-import type { RestoreApi } from './api';
-import type { RestoreCheckpoint } from './checkpoint';
+import type { Locale } from '../i18n/types';
 import type { MergePlan } from './merge/types';
+import type { RestoreTarget, RestoreWriter } from './writer';
 import type { RestoreMode, RestoreResource, RestoreStatus, RestoreWarning } from './codes';
 
-export interface RestoreTarget {
-  id: string;
-  name: string;
-  workspaceId: string;
-  url: string;
-}
-export interface RestoreContext {
-  boardId: string;
-  workspaceId: string;
-  workspaceName: string;
-}
+export type { RestoreContext, RestoreTarget, RestoreWriter } from './writer';
+
 export interface RestoreJournal {
   format: 'trello-exporter.restore-report';
   formatVersion: '0.1.0';
@@ -74,19 +64,44 @@ export interface RestoreOptions {
   onProgress?: (progress: RestoreProgress) => void;
 }
 
-/** Scoped writer boundary shared by execution and its synthetic tests */
-export type RestoreWriter = Pick<
-  RestoreApi,
-  | 'selectTarget'
-  | 'snapshot'
-  | 'verifyTarget'
-  | 'create'
-  | 'verifyEntity'
-  | 'verifyNested'
-  | 'value'
-  | 'update'
-  | 'item'
->;
+/** Durable execution boundary; implemented by RestoreCheckpoint */
+export interface RestoreSteps {
+  /**
+   * Reuses a confirmed identity or checkpoints one required write
+   * @param resource - Target resource kind
+   * @param sourceId - Durable recovery key
+   * @param create - One write attempt after persisting pending state
+   * @returns Confirmed target identity
+   * @throws Write, storage, cancellation, or invalid-checkpoint failures
+   */
+  step(resource: RestoreResource, sourceId: string, create: () => Promise<string>): Promise<string>;
+  /**
+   * Checkpoints optional content while retaining unknown write outcomes
+   * @param resource - Optional target resource kind
+   * @param sourceId - Durable recovery key
+   * @param create - One write attempt after persisting pending state
+   * @returns Confirmed identity or null after a known optional rejection
+   * @throws Uncertain-write, storage, ownership, or cancellation failures
+   */
+  optionalStep(
+    resource: RestoreResource,
+    sourceId: string,
+    create: () => Promise<string>,
+  ): Promise<string | null>;
+  /**
+   * Resolves an identity already recorded by this operation
+   * @param resource - Target resource kind
+   * @param sourceId - Durable recovery key
+   * @returns Confirmed target identity
+   * @throws RestoreError when the mapping is missing
+   */
+  mapped(resource: RestoreResource, sourceId: string): string;
+  /**
+   * Persists the current operation before further writes
+   * @throws Storage failures when durability cannot be established
+   */
+  readonly save: () => void;
+}
 
 export interface RestoreExecution {
   imported: ImportedBoard;
@@ -94,6 +109,6 @@ export interface RestoreExecution {
   target: RestoreTarget;
   api: RestoreWriter;
   options: RestoreOptions;
-  checkpoint: Pick<RestoreCheckpoint, 'step' | 'optionalStep' | 'mapped' | 'save'>;
+  checkpoint: RestoreSteps;
   plan: MergePlan;
 }

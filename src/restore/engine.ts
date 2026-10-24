@@ -1,10 +1,8 @@
 import type { ImportedBoard } from '../import/read';
-import type { Locale } from '../i18n/types';
 import { ApiError } from '../api/errors';
 import { ApiErrorCode } from '../shared/error-codes';
-import { sha256, jsonBytes } from '../snapshot/encoding';
-import { canResumeJournal, hasUncertainWrite } from './journal';
-import { RestoreError, RestoreErrorCode, RestoreMode, RestoreStatus } from './codes';
+import { canResumeJournal, createMergeJournal, hasUncertainWrite } from './journal';
+import { RestoreError, RestoreErrorCode, RestoreStatus } from './codes';
 import type {
   JournalStore,
   RestoreContext,
@@ -14,12 +12,8 @@ import type {
   MergeJournal,
 } from './types';
 import { RestoreCheckpoint } from './checkpoint';
-import { restorationPlan } from './plan';
 import { executeMerge } from './merge/execute';
-import { buildMergePlan } from './merge/planner';
-import { canonical } from './merge/values';
-import { MergeActionKind } from './merge/types';
-import type { MergeAction, MergePlan } from './merge/types';
+import { reviewMergePlan } from './merge/review';
 
 export type { RestoreExecution, RestoreOptions } from './types';
 export { commentSummaries } from './comments';
@@ -63,10 +57,13 @@ export class RestoreEngine {
     if (hasUncertainWrite(previous)) throw new RestoreError(RestoreErrorCode.UnknownWrite);
     const continuation = options.resume ? requireContinuation(previous, imported, context) : null;
     const fresh = await this.api.snapshot(context, { signal: options.signal });
-    const plan = buildMergePlan(imported, fresh, reviewed.decisions, previous);
-    assertReviewed(reviewed, plan);
-    const planned = await operationHashes(plan.actions);
-    if (continuation) validateContinuation(continuation, plan, planned);
+    const { plan, planned } = await reviewMergePlan({
+      imported,
+      current: fresh,
+      reviewed,
+      previous,
+      continuation,
+    });
     const target = await this.api.selectTarget(context, { signal: options.signal });
     options.signal?.throwIfAborted();
     const journal = continuation
@@ -78,7 +75,15 @@ export class RestoreEngine {
           status: RestoreStatus.Running,
           error: null,
         }
-      : newJournal(imported, context, target, plan, planned, options.locale, previous);
+      : createMergeJournal({
+          imported,
+          context,
+          target,
+          plan,
+          planned,
+          locale: options.locale,
+          previous,
+        });
     const save = () => {
       journal.updatedAt = new Date().toISOString();
       this.store.save(journal);
@@ -129,81 +134,6 @@ function requireContinuation(
   )
     throw new RestoreError(RestoreErrorCode.JournalMismatch);
   return previous;
-}
-function assertReviewed(reviewed: MergePlan, current: MergePlan): void {
-  if (
-    current.unresolved ||
-    reviewed.targetState !== current.targetState ||
-    canonical({ actions: reviewed.actions, bindings: reviewed.bindings }) !==
-      canonical({ actions: current.actions, bindings: current.bindings })
-  )
-    throw new RestoreError(RestoreErrorCode.PlanStale);
-}
-async function operationHashes(actions: MergeAction[]): Promise<Record<string, string>> {
-  return Object.fromEntries(
-    await Promise.all(
-      actions.map(async (action) => [action.key, await sha256(jsonBytes(action))] as const),
-    ),
-  );
-}
-function validateContinuation(
-  previous: RestoreJournal,
-  plan: MergePlan,
-  hashes: Record<string, string>,
-): void {
-  if (plan.actions.some((action) => previous.planned?.[action.key] !== hashes[action.key]))
-    throw new RestoreError(RestoreErrorCode.PlanStale);
-  for (const [key, id] of Object.entries(previous.bindings ?? {}))
-    if (plan.bindings[key] !== id) throw new RestoreError(RestoreErrorCode.PlanStale);
-}
-function newJournal(
-  imported: ImportedBoard,
-  context: RestoreContext,
-  target: NonNullable<RestoreJournal['target']>,
-  plan: MergePlan,
-  planned: Record<string, string>,
-  locale: Locale,
-  previous: RestoreJournal | null,
-): MergeJournal {
-  const now = new Date().toISOString();
-  const metadata = restorationPlan(imported);
-  return {
-    format: 'trello-exporter.restore-report',
-    formatVersion: '0.1.0',
-    operationId: crypto.randomUUID(),
-    checksum: imported.checksum,
-    snapshotId: imported.snapshot.snapshotId,
-    sourceContextId: context.boardId,
-    workspaceId: context.workspaceId,
-    target,
-    startedAt: now,
-    updatedAt: now,
-    status: RestoreStatus.Running,
-    pending: null,
-    completed: {},
-    skipped: [],
-    warnings: plan.actions.length ? metadata.warnings : [],
-    error: null,
-    commentLocale: locale,
-    mode: RestoreMode.Merge,
-    sourceBoardId: imported.snapshot.board.id,
-    bindings: { ...plan.bindings },
-    decisions: { ...plan.decisions },
-    planned,
-    commentParts: Object.fromEntries(
-      Object.entries(previous?.commentParts ?? {}).filter(
-        ([key]) => previous?.bindings?.[key] === plan.bindings[key],
-      ),
-    ),
-    merge: {
-      plannedCreates: plan.actions.filter((action) => action.kind !== MergeActionKind.Update)
-        .length,
-      plannedUpdates: plan.actions.filter((action) => action.kind === MergeActionKind.Update)
-        .length,
-      unchanged: plan.unchanged,
-      retained: plan.retained,
-    },
-  };
 }
 function failureStatus(error: unknown, signal?: AbortSignal): RestoreStatus {
   if (

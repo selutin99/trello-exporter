@@ -42,6 +42,19 @@ test('upload metadata has a canonical link and does not serialize signed source 
   ).toMatchObject({ kind: 'external-link', size: null, url: 'https://example.com/' });
 });
 
+test('renamed uploads preserve their display name and link to the original file path', () => {
+  const attachment = normalizeAttachment(
+    { ...sourceAttachment, name: 'Renamed attachment', fileName: 'original file.txt' },
+    id(3),
+  );
+  expect(attachment.name).toBe('Renamed attachment');
+  expect(attachment.url).toContain('/download/original%20file.txt');
+  for (const fileName of [undefined, null, ''])
+    expect(normalizeAttachment({ ...sourceAttachment, fileName }, id(3)).url).toContain(
+      '/download/note.txt',
+    );
+});
+
 test('positions and ties produce contiguous, deterministic sibling order', () => {
   expect(
     ordered([

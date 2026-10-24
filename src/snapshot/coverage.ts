@@ -1,0 +1,34 @@
+import { snapshotCollections } from './collections';
+import { CaptureOutcome, CoverageStatus, SnapshotSection } from './codes';
+import type { Snapshot } from './types';
+
+/**
+ * Updates section counts and completeness after capture or ZIP packaging
+ * @param snapshot - Capture to finalize without changing its content or existing file coverage
+ */
+export function finishCapture(snapshot: Snapshot): void {
+  const incomplete = new Set(snapshot.issues.map((item) => item.entityType));
+  if (incomplete.has(SnapshotSection.Checklists)) incomplete.add(SnapshotSection.ChecklistItems);
+  if (incomplete.has(SnapshotSection.CustomFields))
+    incomplete.add(SnapshotSection.CustomFieldValues);
+  for (const section of snapshotCollections) {
+    snapshot.coverage[section] = {
+      status: incomplete.has(section) ? CoverageStatus.Partial : CoverageStatus.Complete,
+      count: snapshot[section].length,
+    };
+  }
+  snapshot.coverage[SnapshotSection.Board] = {
+    status: incomplete.has(SnapshotSection.Board)
+      ? CoverageStatus.Partial
+      : CoverageStatus.Complete,
+    count: 1,
+  };
+  snapshot.coverage[SnapshotSection.AttachmentFiles] ??= {
+    status: CoverageStatus.Excluded,
+    count: 0,
+  };
+  snapshot.capture.completedAt = new Date().toISOString();
+  snapshot.capture.outcome = snapshot.issues.length
+    ? CaptureOutcome.Partial
+    : CaptureOutcome.Complete;
+}

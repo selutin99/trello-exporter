@@ -7,7 +7,7 @@ import { ApiErrorCode } from '../../src/shared/error-codes';
 import { Locale } from '../../src/i18n';
 import { MemoryJournal, restoreJournal, targetId } from '../helpers/restore';
 
-const options = { name: 'Synthetic restoration', locale: Locale.English };
+const options = { locale: Locale.English };
 
 test('a write is durably pending before creation, and a completed identity is reused', async () => {
   const journal = restoreJournal();

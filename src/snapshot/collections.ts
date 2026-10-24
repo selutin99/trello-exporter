@@ -1,3 +1,5 @@
+import { SnapshotSection } from './codes';
+
 /**
  * Orders normalized siblings without mutating their source collection
  * @param values - Records with zero-based sibling order
@@ -26,3 +28,16 @@ export function groupRecords<T>(
   }
   return groups;
 }
+/** Snapshot array sections whose coverage counts must match their normalized records */
+export const snapshotCollections = [
+  SnapshotSection.Lists,
+  SnapshotSection.Cards,
+  SnapshotSection.Labels,
+  SnapshotSection.Members,
+  SnapshotSection.CustomFields,
+  SnapshotSection.CustomFieldValues,
+  SnapshotSection.Checklists,
+  SnapshotSection.ChecklistItems,
+  SnapshotSection.Comments,
+  SnapshotSection.Attachments,
+] as const;

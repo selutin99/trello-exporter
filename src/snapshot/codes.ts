@@ -21,6 +21,21 @@ export enum CoverageStatus {
   Excluded = 'excluded',
 }
 
+export enum SnapshotSection {
+  Board = 'board',
+  Lists = 'lists',
+  Cards = 'cards',
+  Labels = 'labels',
+  Members = 'members',
+  CustomFields = 'customFields',
+  CustomFieldValues = 'customFieldValues',
+  Checklists = 'checklists',
+  ChecklistItems = 'checklistItems',
+  Comments = 'comments',
+  Attachments = 'attachments',
+  AttachmentFiles = 'attachmentFiles',
+}
+
 export enum CaptureOutcome {
   Complete = 'complete',
   Partial = 'partial',

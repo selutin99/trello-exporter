@@ -4,7 +4,9 @@ import type { BoardReader } from '../api/reader';
 import type { SourceAttachment } from '../api/schemas';
 import { serviceUrls } from '../config/services';
 import { product } from '../config/product';
-import { CaptureOutcome, CoverageStatus, ExportStage, IssueCode } from './codes';
+import { CaptureOutcome, ExportStage, IssueCode, SnapshotSection } from './codes';
+import { finishCapture } from './coverage';
+export { finishCapture } from './coverage';
 import {
   appendChecklists,
   appendComments,
@@ -86,7 +88,7 @@ export async function captureBoard(
   };
   const uploads = new Map<string, SourceAttachment>();
   const optional = optionalSection(snapshot, signal);
-  await optional('customFields', null, async () => {
+  await optional(SnapshotSection.CustomFields, null, async () => {
     snapshot.customFields = ordered(await reader.customFields(request)).map((field) => ({
       id: field.id,
       name: field.name,
@@ -103,23 +105,25 @@ export async function captureBoard(
   for (const [index, card] of cards.entries()) {
     signal?.throwIfAborted();
     onProgress?.({ stage: ExportStage.Content, current: index, total: cards.length });
-    await optional('checklists', card.id, async () =>
+    await optional(SnapshotSection.Checklists, card.id, async () =>
       appendChecklists(snapshot, await reader.checklists(card.id, request)),
     );
-    await optional('comments', card.id, async () =>
+    await optional(SnapshotSection.Comments, card.id, async () =>
       appendComments(snapshot, await reader.comments(card.id, request), card.id),
     );
-    await optional('attachments', card.id, async () => {
+    await optional(SnapshotSection.Attachments, card.id, async () => {
       for (const attachment of await reader.attachments(card.id, request)) {
         const normalized = normalizeAttachment(attachment, card.id);
         snapshot.attachments.push(normalized);
         if (!normalized.url)
-          snapshot.issues.push(issue(IssueCode.UnsafeLink, 'attachments', attachment.id));
+          snapshot.issues.push(
+            issue(IssueCode.UnsafeLink, SnapshotSection.Attachments, attachment.id),
+          );
         if (attachment.isUpload) uploads.set(attachment.id, attachment);
       }
     });
     if (snapshot.customFields.length > 0)
-      await optional('customFieldValues', card.id, async () => {
+      await optional(SnapshotSection.CustomFieldValues, card.id, async () => {
         const values = await reader.customValues(card.id, request);
         snapshot.customFieldValues.push(
           ...values.map((value) => ({
@@ -131,14 +135,14 @@ export async function captureBoard(
         );
       });
   }
-  await optional('board', null, async () => {
+  await optional(SnapshotSection.Board, null, async () => {
     const after = await reader.board(contextBoardId, request);
     snapshot.capture.changedDuringCapture =
       board.dateLastActivity && after.dateLastActivity
         ? board.dateLastActivity !== after.dateLastActivity
         : null;
     if (snapshot.capture.changedDuringCapture)
-      snapshot.issues.push(issue(IssueCode.BoardChanged, 'board', board.id));
+      snapshot.issues.push(issue(IssueCode.BoardChanged, SnapshotSection.Board, board.id));
   });
   finishCapture(snapshot);
   assertReferences(snapshot);
@@ -147,7 +151,7 @@ export async function captureBoard(
 
 function optionalSection(snapshot: Snapshot, signal?: AbortSignal) {
   return async (
-    section: string,
+    section: SnapshotSection,
     entityId: string | null,
     read: () => Promise<void>,
   ): Promise<void> => {
@@ -159,48 +163,6 @@ function optionalSection(snapshot: Snapshot, signal?: AbortSignal) {
       snapshot.issues.push(issue(IssueCode.SectionUnavailable, section, entityId));
     }
   };
-}
-
-/**
- * Updates coverage after capture or ZIP packaging
- * @param snapshot - Capture to finalize
- */
-export function finishCapture(snapshot: Snapshot): void {
-  const sections = [
-    'lists',
-    'cards',
-    'labels',
-    'members',
-    'customFields',
-    'customFieldValues',
-    'checklists',
-    'checklistItems',
-    'comments',
-    'attachments',
-  ] as const;
-  for (const section of sections) {
-    const incomplete = snapshot.issues.some(
-      (item) =>
-        item.entityType === section ||
-        (section === 'checklistItems' && item.entityType === 'checklists') ||
-        (section === 'customFieldValues' && item.entityType === 'customFields'),
-    );
-    snapshot.coverage[section] = {
-      status: incomplete ? CoverageStatus.Partial : CoverageStatus.Complete,
-      count: snapshot[section].length,
-    };
-  }
-  snapshot.coverage.board = {
-    status: snapshot.issues.some((item) => item.entityType === 'board')
-      ? CoverageStatus.Partial
-      : CoverageStatus.Complete,
-    count: 1,
-  };
-  snapshot.coverage.attachmentFiles ??= { status: CoverageStatus.Excluded, count: 0 };
-  snapshot.capture.completedAt = new Date().toISOString();
-  snapshot.capture.outcome = snapshot.issues.length
-    ? CaptureOutcome.Partial
-    : CaptureOutcome.Complete;
 }
 
 function assertReferences(snapshot: Snapshot): void {

@@ -2,12 +2,12 @@ import { ApiError } from '../api/errors';
 import { ApiErrorCode } from '../shared/error-codes';
 import { HttpMethod } from '../api/types';
 import { RestoreError, RestoreErrorCode, RestoreResource, RestoreWarning } from './codes';
-import type { RestoreJournal, RestoreOptions } from './types';
+import type { RestoreJournal, RestoreOptions, RestoreSteps } from './types';
 
 const optionalRejectionStatuses = new Set([400, 403, 404, 405, 413, 422]);
 
 /** Checkpoints one write at a time while retaining ambiguity for the engine to report */
-export class RestoreCheckpoint {
+export class RestoreCheckpoint implements RestoreSteps {
   /**
    * Binds the operation's durable write boundary
    * @param journal - Current operation and mapped target identities

@@ -52,7 +52,7 @@ export function normalizeAttachment(source: SourceAttachment, cardId: string): S
     name: source.name,
     kind: source.isUpload ? AttachmentKind.Upload : AttachmentKind.Link,
     url: source.isUpload
-      ? `${serviceUrls.trelloBoardOrigin}/1/cards/${cardId}/attachments/${source.id}/download/${encodeURIComponent(source.name)}`
+      ? `${serviceUrls.trelloBoardOrigin}/1/cards/${cardId}/attachments/${source.id}/download/${encodeURIComponent(source.fileName || source.name)}`
       : safeLink(source.url),
     mimeType: source.mimeType,
     size: source.isUpload ? source.bytes : null,

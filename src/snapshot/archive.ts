@@ -3,8 +3,8 @@ export { jsonBytes, sha256 } from './encoding';
 import { Zip, ZipPassThrough } from 'fflate';
 import type { BoardReader } from '../api/reader';
 import type { CapturedBoard } from './capture';
-import { finishCapture } from './capture';
-import { AttachmentKind, CoverageStatus, ExportStage, IssueCode } from './codes';
+import { finishCapture } from './coverage';
+import { AttachmentKind, CoverageStatus, ExportStage, IssueCode, SnapshotSection } from './codes';
 import { issue } from './normalize';
 import { ApiError } from '../api/errors';
 import { ApiErrorCode } from '../shared/error-codes';
@@ -62,10 +62,12 @@ export async function buildArchive(
       } catch (error) {
         options.signal?.throwIfAborted();
         if (!(error instanceof ApiError)) throw error;
-        snapshot.issues.push(issue(IssueCode.FileUnavailable, 'attachmentFiles', attachment.id));
+        snapshot.issues.push(
+          issue(IssueCode.FileUnavailable, SnapshotSection.AttachmentFiles, attachment.id),
+        );
       }
     }
-    snapshot.coverage.attachmentFiles = {
+    snapshot.coverage[SnapshotSection.AttachmentFiles] = {
       status: downloaded === uploads.length ? CoverageStatus.Complete : CoverageStatus.Partial,
       count: downloaded,
     };

@@ -3,9 +3,69 @@ import { ApiErrorCode } from '../../src/shared/error-codes';
 import { expect, test, vi } from 'vitest';
 import { ApiError, TestBoardApi } from '../../src/api';
 import { Transport } from '../../src/api/transport';
+import { deferred } from '../helpers/deferred';
 
 const board = { id: 'a'.repeat(24), shortLink: 'TEST0001', name: 'Synthetic', closed: false };
 const ok = (value: unknown) => new Response(JSON.stringify(value));
+
+test.each(Object.values(HttpMethod))(
+  'cancelling a pending token wait releases %s without dispatching a late request',
+  async (method) => {
+    const active = new AbortController();
+    const token = deferred<string>();
+    const fetchImpl = vi.fn<typeof fetch>();
+    const transport = new Transport({
+      boardReference: board.shortLink,
+      fetchImpl,
+      getAccessToken: () => token.promise,
+    });
+    const rejected = vi.fn();
+    const request = transport.request(method, '/scoped-test', { signal: active.signal });
+    void request.catch(rejected);
+    active.abort();
+    await vi.waitFor(() => expect(rejected).toHaveBeenCalledWith(active.signal.reason));
+    token.resolve('synthetic');
+    await expect(request).rejects.toBe(active.signal.reason);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  },
+);
+
+test('a failed attachment stream becomes a safe download error and releases its lock', async () => {
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.error(new Error('private-download-detail'));
+    },
+  });
+  const transport = new Transport({
+    boardReference: board.shortLink,
+    getAccessToken: async () => 'synthetic',
+    fetchImpl: async () => new Response(stream),
+  });
+  await expect(transport.download('/scoped-test-download', 10)).rejects.toEqual(
+    new ApiError(ApiErrorCode.NetworkError),
+  );
+  expect(stream.locked).toBe(false);
+});
+
+test('cancelling a pending attachment read cancels the source and releases its lock', async () => {
+  const active = new AbortController();
+  const cancel = vi.fn();
+  const pull = vi.fn();
+  const stream = new ReadableStream<Uint8Array>({ pull, cancel }, { highWaterMark: 0 });
+  const transport = new Transport({
+    boardReference: board.shortLink,
+    getAccessToken: async () => 'synthetic',
+    fetchImpl: async () => new Response(stream),
+  });
+  const request = transport.download('/scoped-test-download', 10, { signal: active.signal });
+  const rejected = vi.fn();
+  void request.catch(rejected);
+  await vi.waitFor(() => expect(pull).toHaveBeenCalledOnce());
+  active.abort();
+  await vi.waitFor(() => expect(rejected).toHaveBeenCalledWith(active.signal.reason));
+  expect(cancel).toHaveBeenCalledOnce();
+  expect(stream.locked).toBe(false);
+});
 
 test('binary downloads enforce their byte budget and release the stream on failure', async () => {
   const transport = (response: Response) =>

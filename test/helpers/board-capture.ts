@@ -1,5 +1,5 @@
 import type { CapturedBoard } from '../../src/snapshot/capture';
-import { finishCapture } from '../../src/snapshot/capture';
+import { finishCapture } from '../../src/snapshot/coverage';
 import { AttachmentKind, CaptureOutcome, CustomFieldType } from '../../src/snapshot/codes';
 import type { BoardReader } from '../../src/api/reader';
 import { syntheticCards, syntheticFiles, syntheticLabels, syntheticLists } from './board-data';

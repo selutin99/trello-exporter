@@ -1,6 +1,8 @@
 import { HttpMethod } from './types';
 import { ApiErrorCode } from '../shared/error-codes';
 import { serviceUrls } from '../config/services';
+import { waitForOperation } from '../core/operation';
+import { readByteChunks } from '../core/stream';
 import { ApiError } from './errors';
 import { pause, retryDelay } from './retry';
 import type { ClientOptions, RequestOptions } from './types';
@@ -51,18 +53,13 @@ export class Transport {
   ): Promise<Uint8Array<ArrayBuffer>> {
     const response = await this.#response(HttpMethod.Get, path, { ...options, binary: true });
     if (!response.body) throw new ApiError(ApiErrorCode.InvalidResponse);
-    const reader = response.body.getReader();
     const chunks: Uint8Array[] = [];
     let size = 0;
     try {
-      for (;;) {
-        options.signal?.throwIfAborted();
-        const chunk = await reader.read();
-        options.signal?.throwIfAborted();
-        if (chunk.done) break;
-        size += chunk.value.byteLength;
+      for await (const chunk of readByteChunks(response.body, options.signal)) {
+        size += chunk.byteLength;
         if (size > maximumBytes) throw new ApiError(ApiErrorCode.InvalidResponse);
-        chunks.push(chunk.value);
+        chunks.push(chunk);
       }
       const bytes = new Uint8Array(size);
       let offset = 0;
@@ -71,10 +68,10 @@ export class Transport {
         offset += chunk.length;
       }
       return bytes;
-    } finally {
-      // Cleanup cannot recover data; preserve the read failure or cancellation reason.
-      await reader.cancel().catch(() => undefined);
-      reader.releaseLock();
+    } catch (error) {
+      options.signal?.throwIfAborted();
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(ApiErrorCode.NetworkError);
     }
   }
 
@@ -101,7 +98,8 @@ export class Transport {
     signal?.throwIfAborted();
     let token: string | null | undefined;
     try {
-      token = await this.options.getAccessToken();
+      const pending = this.options.getAccessToken();
+      token = signal ? await waitForOperation(pending, signal) : await pending;
     } catch {
       signal?.throwIfAborted();
       throw new ApiError(ApiErrorCode.AuthRequired);

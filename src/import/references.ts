@@ -1,5 +1,5 @@
-import { groupRecords } from '../snapshot/collections';
-import { CoverageStatus, CustomFieldType } from '../snapshot/codes';
+import { groupRecords, snapshotCollections } from '../snapshot/collections';
+import { CoverageStatus, CustomFieldType, SnapshotSection } from '../snapshot/codes';
 import { z } from 'zod';
 import type { Snapshot } from '../snapshot/types';
 import { ImportError, ImportErrorCode } from './codes';
@@ -100,19 +100,8 @@ export function validateReferences(snapshot: Snapshot): void {
     ),
   );
   customValues(snapshot, cards);
-  const collections = {
-    lists: snapshot.lists,
-    cards: snapshot.cards,
-    labels: snapshot.labels,
-    members: snapshot.members,
-    customFields: snapshot.customFields,
-    customFieldValues: snapshot.customFieldValues,
-    checklists: snapshot.checklists,
-    checklistItems: snapshot.checklistItems,
-    comments: snapshot.comments,
-    attachments: snapshot.attachments,
-  };
-  for (const [section, records] of Object.entries(collections)) {
+  for (const section of snapshotCollections) {
+    const records = snapshot[section];
     const coverage = snapshot.coverage[section];
     requireValid(
       !!coverage &&
@@ -120,9 +109,9 @@ export function validateReferences(snapshot: Snapshot): void {
         (coverage.status !== CoverageStatus.Excluded || records.length === 0),
     );
   }
-  requireValid(snapshot.coverage.board?.count === 1);
+  requireValid(snapshot.coverage[SnapshotSection.Board]?.count === 1);
   requireValid(
-    snapshot.coverage.attachmentFiles?.count ===
+    snapshot.coverage[SnapshotSection.AttachmentFiles]?.count ===
       snapshot.attachments.filter((attachment) => attachment.file).length,
   );
 }

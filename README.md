@@ -335,12 +335,25 @@ The restore UI controller owns DOM events, while `RestoreSession` owns local
 input, comparison state, authorization waits, and cancellation. Merge planning
 is pure: it compares validated snapshots and explicit choices without an SDK or
 HTTP dependency. The engine revalidates the reviewed plan before execution, and
-`RestoreCheckpoint` records pending and confirmed writes in the local journal.
+`restore/merge/review.ts` verifies the fresh comparison and the remaining action
+hashes for continuation. `RestoreCheckpoint` records pending and confirmed writes
+in the local journal; journal creation and validation stay in `restore/journal.ts`.
+Execution uses independent `RestoreWriter` and `RestoreSteps` contracts. The HTTP
+and checkpoint classes implement these contracts without defining the domain's
+interfaces; scoped I/O contracts live in `restore/writer.ts`.
 `RestoreApi` coordinates fixed API paths with `RestoreScope` ownership checks
 and pure payload guards in `restore/payloads.ts`. Unsupported optional writes
 and their dependent values are reported as omissions; a rejected dropdown copy
 never substitutes the conflicting old option. Format renderers consume the
 normalized snapshot independently of the SDK and restoration workflow.
+
+`snapshot/coverage.ts` finalizes section counts and completeness independently of
+API capture and ZIP packaging. Capture and input validation share named snapshot
+sections and the same collection inventory. `core/stream.ts` owns cancellable
+byte-stream iteration and reader cleanup for local scans and attachment downloads.
+Transport converts failed download bodies into explicit file omissions during ZIP
+packaging. Cancellation of an OAuth token wait never dispatches a late request;
+dispatched writes retain their confirmed or unknown outcome without retries.
 
 ### Commands and checks
 
