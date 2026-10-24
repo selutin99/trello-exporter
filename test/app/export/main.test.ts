@@ -71,7 +71,7 @@ test('an embedded session downloads JSON and ZIP and preserves language preferen
   expect(downloads.downloadBlob.mock.calls.at(-1)?.[0]).toBeInstanceOf(Blob);
   change('#language', 'en');
   expect(document.documentElement.lang).toBe('en');
-  expect(document.body.textContent).toContain('Save your board');
+  expect(document.body.textContent).toContain('Export your board');
   expect(localStorage.getItem('exporter-locale')).toBe('en');
   expect(fetcher.mock.calls.every((call) => (call[1]?.method ?? 'GET') === 'GET')).toBe(true);
 });

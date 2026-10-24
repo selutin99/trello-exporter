@@ -135,7 +135,7 @@
           <button id="save" class="primary"></button
           ><button id="report" class="text-button" data-i18n="exportReport"></button>
         </section>
-        <div class="export-footer">
+        <div class="workflow-footer">
           <p class="privacy-note" data-i18n="exportPrivacy"></p>
           <button id="export" class="primary" data-i18n="exportAction" disabled></button>
         </div>
@@ -182,26 +182,44 @@
             </div>
             <div id="restore-conflicts"></div>
           </section>
-          <h3 data-i18n="restoreLimitations"></h3>
-          <ul id="restore-limitations"></ul>
-          <p data-i18n="restorePermission"></p>
           <button id="restore-connect" data-i18n="restoreConnect" hidden></button>
           <p id="restore-previous" data-i18n="restorePrevious" hidden></p>
           <label class="restore-confirm"
             ><input id="restore-confirm" type="checkbox" /><span data-i18n="restoreConfirm"></span
           ></label>
-          <div class="restore-actions">
-            <button id="restore-start" class="primary" data-i18n="restoreAction" disabled></button
-            ><button id="restore-resume" data-i18n="restoreResume" hidden></button>
-          </div>
         </section>
-        <button id="restore-cancel" data-i18n="exportCancel" hidden></button>
+        <button id="restore-cancel" data-i18n="restoreCancel" hidden></button>
         <section id="restore-result" class="notice" hidden>
           <h2 id="restore-outcome"></h2>
           <a id="restore-target" target="_blank" rel="noopener noreferrer" hidden></a>
           <p data-i18n="restoreRetained"></p>
           <button id="restore-report" data-i18n="restoreReport"></button>
         </section>
+        <div class="workflow-footer">
+          <p class="privacy-note" data-i18n="restorePrivacy"></p>
+          <div class="restore-actions">
+            <button id="restore-start" class="primary" data-i18n="restoreAction" disabled></button
+            ><button id="restore-resume" data-i18n="restoreResume" hidden></button>
+          </div>
+        </div>
+        <p class="subtle fine-print" data-i18n="restoreConsistency"></p>
+        <details class="technical">
+          <summary data-i18n="exportDetails"></summary>
+          <p data-i18n="restoreFileLimit"></p>
+          <section id="restore-details" hidden>
+            <h3 data-i18n="restoreLimitations"></h3>
+            <ul id="restore-limitations"></ul>
+          </section>
+          <p data-i18n="restorePermission"></p>
+          <p>
+            <a
+              href="%CONNECTED_APPS_URL%"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-i18n="manageAccess"
+            ></a>
+          </p>
+        </details>
       </section>
       <footer>
         <a

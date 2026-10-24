@@ -85,7 +85,7 @@ export class ExportSession {
    * @param reader - Live board-scoped reader, or null before connection
    * @param contextBoardId - Live SDK board identity
    * @param locale - Product language for readable export labels
-   * @returns Completion after the archive is ready or an error is displayed
+   * @returns Completion after the file is ready, the board is empty, or an error is displayed
    */
   async prepare(
     reader: BoardReader | null,
@@ -93,7 +93,7 @@ export class ExportSession {
     locale: Locale = Locale.English,
   ): Promise<void> {
     const board = this.#model.board;
-    if (!board || !reader) return;
+    if (!board || !reader || board.cards === 0) return;
     await this.#run(ExportState.Running, async (signal) => {
       const options = {
         signal,
@@ -104,14 +104,30 @@ export class ExportSession {
         },
       };
       const capture = await captureBoard(reader, contextBoardId, options);
+      signal.throwIfAborted();
+      const snapshot = capture.snapshot;
+      const overview = {
+        name: snapshot.board.name,
+        lists: snapshot.lists.length,
+        cards: snapshot.cards.length,
+      };
+      if (overview.cards === 0) {
+        this.#model = {
+          ...this.#model,
+          board: overview,
+          progress: null,
+          result: null,
+          state: ExportState.Ready,
+        };
+        return;
+      }
       const format = this.model.format;
       const blob = await prepareExport(capture, format, reader, locale, options);
       signal.throwIfAborted();
-      const snapshot = capture.snapshot;
       const date = new Date().toISOString().replaceAll(':', '-').slice(0, 19);
       this.#model = {
         ...this.#model,
-        board,
+        board: overview,
         result: { blob, snapshot, format, filename: `trello-exporter-${date}.${format}` },
         state:
           snapshot.capture.outcome === CaptureOutcome.Complete

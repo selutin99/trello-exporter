@@ -2,7 +2,7 @@ import { expect, test, vi } from 'vitest';
 import { ExportSession } from '../../../src/app/export/session';
 import { ExportFormat } from '../../../src/snapshot/codes';
 import { ExportState } from '../../../src/app/export/types';
-import { id, readerFixture } from '../../helpers/snapshot';
+import { id, readerFixture, sourceList } from '../../helpers/snapshot';
 
 test('a session rejects concurrent work and late results after cancellation', async () => {
   const changed = vi.fn();
@@ -51,6 +51,47 @@ test('refreshing board information clears a previously prepared download', async
   await session.load(reader, id(1));
   expect(session.model.state).toBe(ExportState.Ready);
   expect(session.model.result).toBeNull();
+});
+
+test('a fresh export updates the overview after board content changes', async () => {
+  const session = new ExportSession(() => {});
+  const previous = readerFixture({
+    [`/1/boards/${id(1)}/lists`]: [sourceList, { ...sourceList, id: id(90) }],
+  });
+  await session.load(previous.reader, id(1));
+  expect(session.model.board).toMatchObject({ lists: 2, cards: 1 });
+  session.selectFormat(ExportFormat.Json);
+  await session.prepare(readerFixture().reader, id(1));
+  expect(session.model.state).toBe(ExportState.Complete);
+  expect(session.model.board).toEqual({ name: 'Synthetic board', lists: 1, cards: 1 });
+});
+
+test.each(Object.values(ExportFormat))(
+  'a board without active cards cannot start a %s export',
+  async (format) => {
+    const session = new ExportSession(() => {});
+    const { reader, calls } = readerFixture({ [`/1/boards/${id(1)}/cards`]: [] });
+    await session.load(reader, id(1));
+    session.selectFormat(format);
+    const before = calls.length;
+    await session.prepare(reader, id(1));
+    expect(calls).toHaveLength(before);
+    expect(session.model.result).toBeNull();
+    expect(session.busy).toBe(false);
+  },
+);
+
+test('a board that becomes empty during capture produces no download', async () => {
+  const session = new ExportSession(() => {});
+  await session.load(readerFixture().reader, id(1));
+  const { reader } = readerFixture({ [`/1/boards/${id(1)}/cards`]: [] });
+  const download = vi.spyOn(reader, 'file');
+  await session.prepare(reader, id(1));
+  expect(session.model.state).toBe(ExportState.Ready);
+  expect(session.model.board).toMatchObject({ lists: 1, cards: 0 });
+  expect(session.model.result).toBeNull();
+  expect(session.model.progress).toBeNull();
+  expect(download).not.toHaveBeenCalled();
 });
 
 test('format selection preserves an unavailable board outcome until the board can be loaded', async () => {

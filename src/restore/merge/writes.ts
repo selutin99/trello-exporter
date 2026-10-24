@@ -89,13 +89,13 @@ export function createPayload(
     case RestoreResource.Label:
       return { name, color: fields[MergeField.Color] };
     case RestoreResource.Field:
+      // Dropdown options are separate writes so their new IDs can be mapped.
       return {
         name,
         type: fields[MergeField.Type],
         idModel: parentId,
         modelType: 'board',
         pos: 'bottom',
-        options: '[]',
       };
     case RestoreResource.Option:
       return {

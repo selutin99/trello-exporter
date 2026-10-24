@@ -296,7 +296,7 @@ legend {
 .fine-print {
   font-size: 11px;
 }
-.export-footer {
+.workflow-footer {
   border-top: 1px solid var(--border);
   padding-top: 18px;
   display: flex;
@@ -447,7 +447,7 @@ body [hidden] {
   .included ul {
     grid-template-columns: 1fr;
   }
-  .export-footer {
+  .workflow-footer {
     align-items: stretch;
     flex-direction: column;
     gap: 10px;

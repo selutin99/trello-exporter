@@ -217,6 +217,12 @@ class Planner {
     incoming: MergeValue,
     current: MergeValue,
   ): boolean {
+    if (
+      (field === MergeField.Start || field === MergeField.Due) &&
+      typeof incoming === 'string' &&
+      typeof current === 'string'
+    )
+      return Date.parse(incoming) === Date.parse(current);
     if (record.resource === RestoreResource.Comment && field === MergeField.Text) {
       const comment = this.imported.snapshot.comments.find((item) => item.id === record.sourceId);
       if (

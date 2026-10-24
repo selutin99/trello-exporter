@@ -40,6 +40,7 @@ export const cardSchema = z.object({
 export const attachmentSchema = z.object({
   id,
   name: z.string(),
+  fileName: z.string().nullish(),
   isUpload: z.boolean(),
   url: z.string(),
   mimeType: z.string().nullable(),

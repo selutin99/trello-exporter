@@ -56,15 +56,16 @@ export class ExportView {
     this.element('attachment-status', HTMLElement).textContent =
       text[includesFiles ? 'exportIncludedStatus' : 'exportExcludedStatus'];
     const action = this.element('export', HTMLButtonElement);
-    action.disabled = !model.board || busy;
+    action.disabled = !model.board || model.board.cards === 0 || busy;
     action.textContent = model.result ? text.exportAnother : text.exportAction;
+    const emptyMessage = model.board?.cards === 0 && !busy ? text.exportEmpty : '';
     this.element('status', HTMLElement).textContent = [
       ExportState.Failed,
       ExportState.ScopeFailed,
       ExportState.Cancelled,
     ].includes(model.state)
       ? text[model.state]
-      : '';
+      : emptyMessage;
     this.element('operation', HTMLElement).hidden = !busy;
     this.element('progress-label', HTMLElement).textContent = model.progress
       ? `${text[model.progress.stage]} ${model.progress.current} / ${model.progress.total}`

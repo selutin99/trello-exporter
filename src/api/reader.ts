@@ -38,7 +38,7 @@ export class BoardReader {
   readonly #transport: Transport;
   readonly #cards = new Set<string>();
   readonly #activeLists = new Set<string>();
-  readonly #attachments = new Map<string, string>();
+  readonly #attachments = new Map<string, { cardId: string; fileName: string }>();
 
   /**
    * Creates a board-scoped reader without write access
@@ -172,13 +172,19 @@ export class BoardReader {
       await this.#cardRequest(
         cardId,
         'attachments',
-        { fields: 'id,name,isUpload,url,mimeType,bytes,pos' },
+        { fields: 'id,name,fileName,isUpload,url,mimeType,bytes,pos' },
         options,
       ),
     );
     attachments
       .filter((attachment) => attachment.isUpload)
-      .forEach((attachment) => this.#attachments.set(attachment.id, cardId));
+      .forEach((attachment) =>
+        this.#attachments.set(attachment.id, {
+          cardId,
+          // The display name can change without renaming the stored upload.
+          fileName: attachment.fileName || attachment.name,
+        }),
+      );
     return attachments;
   }
 
@@ -197,11 +203,11 @@ export class BoardReader {
     maximumBytes: number,
     options: RequestOptions = {},
   ): Promise<Uint8Array<ArrayBuffer>> {
-    if (this.#attachments.get(attachment.id) !== cardId || !attachment.isUpload)
-      throw new ScopeError();
+    const upload = this.#attachments.get(attachment.id);
+    if (!upload || upload.cardId !== cardId || !attachment.isUpload) throw new ScopeError();
     await this.#verifyCard(cardId, options);
     return this.#transport.download(
-      `/cards/${cardId}/attachments/${attachment.id}/download/${encodeURIComponent(attachment.name)}`,
+      `/cards/${cardId}/attachments/${attachment.id}/download/${encodeURIComponent(upload.fileName)}`,
       maximumBytes,
       options,
     );

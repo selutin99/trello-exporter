@@ -1,5 +1,7 @@
 import { assert, expect, test, vi } from 'vitest';
 import { ApiErrorCode } from '../../src/shared/error-codes';
+import { HttpMethod } from '../../src/api/types';
+import { CustomFieldType } from '../../src/snapshot/codes';
 import { attributedComment } from '../../src/restore/comments';
 import { RestoreEngine } from '../../src/restore/engine';
 import {
@@ -43,6 +45,59 @@ async function run(
   });
 }
 const writes = (fixture: Fixture) => fixture.calls.filter((call) => call.method !== 'GET');
+
+test.each([
+  [CustomFieldType.Checkbox, { value: { checked: 'true' } }],
+  [CustomFieldType.Date, { value: { date: '2026-11-20T12:00:00Z' } }],
+  [CustomFieldType.List, { optionId: id(41) }],
+  [CustomFieldType.Number, { value: { number: '12.5' } }],
+  [CustomFieldType.Text, { value: { text: 'Synthetic field value' } }],
+] as const)(
+  'restores a %s field and its value against a strict options contract',
+  async (type, value) => {
+    const capture = createSyntheticCapture();
+    const [field] = capture.snapshot.customFields;
+    const [card] = capture.snapshot.cards;
+    assert(field && card);
+    capture.snapshot.customFields = [
+      { ...field, type, options: type === CustomFieldType.List ? field.options : [] },
+    ];
+    capture.snapshot.customFieldValues = [{ cardId: card.id, fieldId: field.id, ...value }];
+    const input = await readImport(await buildArchive(capture, syntheticFileReader));
+    const fixture = restorationFixture((call) => {
+      if (
+        call.method === String(HttpMethod.Post) &&
+        call.path === '/customFields' &&
+        !(call.body instanceof FormData) &&
+        Object.hasOwn(call.body, 'options') &&
+        (call.body.type !== CustomFieldType.List || !Array.isArray(call.body.options))
+      )
+        return new Response('Invalid custom field options', { status: 400 });
+    });
+    const report = await run(fixture, input);
+    expect(report.error).toBeNull();
+    expect(report.skipped).toEqual([]);
+    const current = await fixture.api.snapshot(await fixture.api.context(sourceBoard.id));
+    expect(current.customFields).toHaveLength(1);
+    expect(current.customFieldValues).toHaveLength(1);
+    const [restoredField] = current.customFields;
+    const [restoredValue] = current.customFieldValues;
+    assert(restoredField && restoredValue);
+    expect(restoredField).toMatchObject({ name: field.name, type });
+    expect(restoredField.options.map((option) => option.text)).toEqual(
+      type === CustomFieldType.List ? field.options.map((option) => option.text) : [],
+    );
+    expect(restoredValue.fieldId).toBe(restoredField.id);
+    if ('optionId' in value) {
+      const optionId = report.bindings?.[`options/${value.optionId}`];
+      assert(optionId);
+      expect(restoredValue.optionId).toBe(optionId);
+    } else expect(restoredValue.value).toEqual(value.value);
+    const before = writes(fixture).length;
+    await run(fixture, input);
+    expect(writes(fixture)).toHaveLength(before);
+  },
+);
 
 test.each([false, true])(
   'JSON/ZIP add missing content to the current board without creating a board: zip=%s',

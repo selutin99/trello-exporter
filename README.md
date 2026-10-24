@@ -57,6 +57,10 @@ outside the export scope.
 3. Export, then review the completeness report and any missing content
 4. Keep JSON or ZIP if you intend to import the saved state later
 
+Boards without active cards in active lists cannot be exported. If cards are added
+to an empty board, update the board information before exporting. A fresh capture
+that finds no active cards also stops without preparing a download.
+
 ```mermaid
 flowchart LR
     A[Current Trello board] --> B[Read active content through the API]
@@ -80,12 +84,14 @@ apparently successful download does not establish a complete backup.
 ## Import and conflict resolution
 
 Open the destination board first: it can be the original board or another board
-where the Power-Up is enabled. Choose **Restore**, select a project JSON/ZIP,
-review the destination and merge plan, resolve conflicts, and confirm **Apply to
-this board**. Import does not create a board.
+where the Power-Up is enabled. Choose **Import**, select a project JSON/ZIP,
+review the destination and merge plan, resolve conflicts, confirm the reviewed
+changes, and select **Import**. Import does not create a board. The footer describes
+local processing and includes technical details about limits, permissions, and
+content that cannot be imported exactly.
 
 <p align="center">
-  <img src=".github/assets/merge-preview.svg" alt="Illustrative conflict review comparing the current board and a snapshot, with explicit keep-current and use-snapshot choices" width="1200" />
+  <img src=".github/assets/merge-preview.svg" alt="Illustrative conflict review comparing the current board and a file, with explicit keep-current and use-file choices" width="1200" />
 </p>
 
 ```mermaid
@@ -180,8 +186,15 @@ broken relationships fail validation. SHA-256 detects corruption; it is not a
 digital signature.
 
 Standalone JSON has no embedded files or local-file references. ZIP file coverage
-reports which uploads were actually downloaded. External links are retained as
-safe metadata and are never fetched. Import is bounded to 300 MiB total input
+reports which uploads were actually downloaded. A live Chrome test confirmed that
+the attachment download request with OAuth 2.0 receives HTTP 401 after a successful
+HTTP 204 CORS preflight. The browser reports a CORS failure; the ZIP omits the
+unavailable bytes and reports `FILE_UNAVAILABLE`. The upload remains accessible
+through Trello's own interface. OAuth 2.0 attachment downloading remains unresolved;
+complete attachment backup from the Power-Up remains unverified. Downloads use
+the original upload `fileName` when available, preserving the download path after
+its display name changes. External links
+are retained as safe metadata and are never fetched. Import is bounded to 300 MiB total input
 and expanded content, 16 MiB per JSON entry, and 10,000 entries; ZIP expansion is
 also bounded to reject excessive compression ratios. Export allows 250 MiB of
 original upload bytes. These are implementation limits, not completed live
@@ -247,8 +260,18 @@ or commit.
 The intended clients are Trello in Chrome and Trello Desktop on macOS, with
 Russian and English interfaces. Earlier live diagnostics verified the board
 button/modal, a synthetic JSON download, RU/EN, local reading of a 200 MiB file,
-and a scoped metadata read. Those diagnostics do not validate the current full
-export/import implementation or the complete attachment workload.
+and a scoped metadata read. A synthetic Chrome smoke test on October 21, 2026
+also exercised current-board merging, mixed conflict choices, repeated import,
+cancellation after confirmed writes, and continuation with the same operation ID
+and confirmed object IDs. The resulting board had 14 cards and 38 checklist items;
+a 74-byte imported upload downloaded through Trello matched its original SHA-256.
+Custom field creates in that run were rejected with HTTP 400 and reported as
+skipped content. The create payload has since been corrected to omit inline
+`options`; dropdown choices are created separately to map their new IDs. Synthetic
+regression checks cover all five field types, their card values, and repeat imports;
+live confirmation of this fix remains pending.
+These checks do not validate full Desktop export/import or the complete attachment
+workload; the ZIP attachment download limitation above remains unresolved.
 
 For the previously tested Desktop connection, authorize the same test board in
 Chrome, then return to Desktop and reopen the Power-Up. Direct Desktop OAuth

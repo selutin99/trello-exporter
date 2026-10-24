@@ -4,7 +4,7 @@ import { loadPage } from '../../helpers/browser';
 import { ExportView } from '../../../src/app/export/view';
 import { ExportState } from '../../../src/app/export/types';
 import { ExportSession } from '../../../src/app/export/session';
-import { Locale } from '../../../src/i18n';
+import { Locale, translations } from '../../../src/i18n';
 import { ExportFormat, ExportStage, IssueCode } from '../../../src/snapshot/codes';
 import { createSyntheticCapture } from '../../helpers/board-capture';
 
@@ -55,6 +55,26 @@ test('a missing control fails clearly and progress is accessible', () => {
   expect(view.element('progress', HTMLProgressElement).value).toBe(1);
   expect(view.element('progress', HTMLProgressElement).max).toBe(3);
   expect(view.element('progress-label', HTMLElement).textContent).toContain('1 / 3');
+});
+
+test.each([0, 3])('a board with %i lists but no active cards cannot be exported', (lists) => {
+  const view = new ExportView(document);
+  const session = new ExportSession(() => {});
+  for (const locale of Object.values(Locale)) {
+    view.render(
+      locale,
+      {
+        ...session.model,
+        state: ExportState.Ready,
+        board: { name: 'Empty synthetic board', lists, cards: 0 },
+        result: null,
+      },
+      true,
+      false,
+    );
+    expect(view.element('export', HTMLButtonElement).disabled).toBe(true);
+    expect(view.element('status', HTMLElement).textContent).toBe(translations[locale].exportEmpty);
+  }
 });
 
 test('all warning types are localized, and untrusted entity IDs remain plain text', () => {

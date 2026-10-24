@@ -31,6 +31,38 @@ test('identical content is a no-op and capture timestamps do not invalidate revi
   expect(targetState(current)).toBe(targetState(input.snapshot));
 });
 
+test.each([MergeField.Start, MergeField.Due] as const)(
+  'Trello timestamp normalization does not introduce a card %s conflict',
+  async (field) => {
+    const { input, current } = await setup();
+    const [sourceCard] = input.snapshot.cards;
+    const [currentCard] = current.cards;
+    if (!sourceCard || !currentCard) throw new Error('Expected synthetic cards');
+    sourceCard[field] = '2026-11-20T12:00:00Z';
+    currentCard[field] = '2026-11-20T12:00:00.000Z';
+    expect(buildMergePlan(input, current).conflicts).toEqual([]);
+    expect(buildMergePlan(input, current).actions).toEqual([]);
+    currentCard[field] = '2026-11-20T12:00:00.001Z';
+    expect(buildMergePlan(input, current).conflicts).toMatchObject([{ field }]);
+    currentCard[field] = null;
+    expect(buildMergePlan(input, current).conflicts).toMatchObject([{ field }]);
+  },
+);
+
+test('equivalent checklist due timestamps do not require a conflict choice', async () => {
+  const { input, current } = await setup();
+  const [sourceItem] = input.snapshot.checklistItems;
+  const [currentItem] = current.checklistItems;
+  if (!sourceItem || !currentItem) throw new Error('Expected synthetic checklist items');
+  sourceItem.due = '2026-11-20T12:00:00Z';
+  currentItem.due = '2026-11-20T12:00:00.000Z';
+  expect(buildMergePlan(input, current).conflicts).toEqual([]);
+  currentItem.due = '2026-11-21T12:00:00.000Z';
+  expect(buildMergePlan(input, current).conflicts).toMatchObject([
+    { field: MergeField.Due, record: { resource: RestoreResource.Item } },
+  ]);
+});
+
 test('each differing field requires its own choice and current-only data is retained', async () => {
   const { input, current } = await setup();
   const card = current.cards[0]!;

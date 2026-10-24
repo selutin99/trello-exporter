@@ -74,9 +74,19 @@ export class RestoreView {
       model.previous.target?.id !== model.context?.boardId ||
       [RestoreStatus.Complete, RestoreStatus.Partial].includes(model.previous.status);
     this.element('restore-merge-plan', HTMLElement).hidden = !model.plan;
-    this.element('restore-destination', HTMLElement).textContent = model.current
+    const destination = this.element('restore-destination', HTMLElement);
+    destination.hidden = !model.current;
+    destination.textContent = model.current
       ? `${text.restoreDestination}: ${model.current.board.name}`
-      : text.restoreUnavailable;
+      : '';
+    const workspace = this.element('restore-workspace', HTMLElement);
+    workspace.hidden = !model.context;
+    workspace.textContent = model.context
+      ? `${text.restoreWorkspace}: ${model.context.workspaceName}`
+      : '';
+    this.element('restore-details', HTMLElement).hidden = !model.imported;
+    const warnings = this.element('restore-limitations', HTMLElement);
+    warnings.replaceChildren();
     if (model.plan) {
       const number = new Intl.NumberFormat(locale);
       const creates = model.plan.actions.filter(
@@ -94,11 +104,6 @@ export class RestoreView {
       this.element('restore-source', HTMLElement).textContent = model.imported.snapshot.board.name;
       this.element('restore-counts', HTMLElement).textContent =
         `${text.exportLists}: ${plan.lists} · ${text.exportCardCount}: ${plan.cards} · ${text.exportItemCount}: ${plan.items} · ${text.exportFileCount}: ${plan.files}`;
-      this.element('restore-workspace', HTMLElement).textContent = model.context
-        ? `${text.restoreWorkspace}: ${model.context.workspaceName}`
-        : text.restoreUnavailable;
-      const warnings = this.element('restore-limitations', HTMLElement);
-      warnings.replaceChildren();
       const notes = [text.restoreIdentities, ...plan.warnings.map((warning) => text[warning])];
       for (const message of notes) {
         const item = this.document.createElement('li');

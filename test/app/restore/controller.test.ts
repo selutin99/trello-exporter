@@ -213,7 +213,7 @@ test('storage errors and cancellation cannot produce hidden background writes', 
   button('restore-cancel').click();
   finish?.(original);
   await ready(ui);
-  expect(document.getElementById('restore-status')?.textContent).toContain('отменено');
+  expect(document.getElementById('restore-status')?.textContent).toContain('отменен');
 });
 
 test('conflict choices are mandatory, safe to display, localized, and invalidate confirmation', async () => {

@@ -106,3 +106,45 @@ test('download is built from scoped IDs, never the untrusted attachment URL', as
   await fixture.reader.attachments(id(3));
   await expect(fixture.reader.file(id(3), sourceAttachment, 4)).rejects.toThrow(ScopeError);
 });
+
+test.each(['original file.txt', 'original café.txt'])(
+  'renaming an upload does not change its download filename: %s',
+  async (fileName) => {
+    const attachment = {
+      ...sourceAttachment,
+      name: 'Renamed attachment',
+      fileName,
+      url: 'https://untrusted.example/file',
+    };
+    const downloadPath = `/1/cards/${id(3)}/attachments/${attachment.id}/download/${encodeURIComponent(fileName)}`;
+    const { reader, calls } = await verifiedReader({
+      [`/1/cards/${id(3)}/attachments`]: [attachment],
+      [downloadPath]: new Response('data'),
+    });
+    await reader.attachments(id(3));
+    expect(
+      await reader.file(id(3), { ...attachment, fileName: 'changed.txt', name: 'Changed' }, 4),
+    ).toEqual(new TextEncoder().encode('data'));
+    expect(calls.at(-1)?.href).toBe(`https://api.trello.com${downloadPath}`);
+    expect(
+      calls
+        .find((url) => url.pathname.endsWith('/attachments'))
+        ?.searchParams.get('fields')
+        ?.split(','),
+    ).toContain('fileName');
+  },
+);
+
+test.each([undefined, null, ''])(
+  'uploads without an original filename retain the display-name fallback: %s',
+  async (fileName) => {
+    const attachment = { ...sourceAttachment, fileName };
+    const path = `/1/cards/${id(3)}/attachments/${attachment.id}/download/${attachment.name}`;
+    const { reader } = await verifiedReader({
+      [`/1/cards/${id(3)}/attachments`]: [attachment],
+      [path]: new Response('data'),
+    });
+    await reader.attachments(id(3));
+    expect(await reader.file(id(3), attachment, 4)).toEqual(new TextEncoder().encode('data'));
+  },
+);
